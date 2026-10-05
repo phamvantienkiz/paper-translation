@@ -1,8 +1,8 @@
 # Business Requirement Document (BRD) — Paper Translation
 
 **Tầng tài liệu**: Business Layer  
-**Dự án**: Paper Translation  
-**Phiên bản**: 1.0  
+**Dự án**: Paper Translation (Personal & Open-Source Edition)  
+**Phiên bản**: 2.0 (Scaled Down & Focused)  
 **Ngày cập nhật**: 2026-10-05  
 **Trạng thái**: Approved  
 
@@ -10,66 +10,56 @@
 
 ## 1. Bối cảnh & Vấn đề nghiệp vụ (Problem Statement)
 
-Trong kỷ nguyên bùng nổ tri thức khoa học và công nghệ, số lượng bài báo khoa học xuất sắc được công bố hàng ngày trên các nền tảng học thuật quốc tế (arXiv, IEEE, ACM, Nature, Science...) là vô cùng lớn. Tuy nhiên, rào cản ngôn ngữ và tính chất chuyên sâu của tài liệu học thuật đặt ra những thách thức nghiêm trọng:
+Là một kỹ sư / nhà nghiên cứu trong lĩnh vực **Công nghệ thông tin (IT)** và **Trí tuệ nhân tạo (AI / Machine Learning / Deep Learning)**, nhu cầu đọc và hấp thụ các bài báo khoa học xuất sắc (từ arXiv, hội nghị NeurIPS, ICML, CVPR, ICLR, ACL...) là công việc diễn ra thường xuyên. Tuy nhiên, quá trình đọc và dịch các tài liệu này gặp phải các rào cản cụ thể:
 
-1. **Sai lệch công thức và định dạng khi dịch:** Các công cụ dịch thuật phổ quát hiện nay (Google Translate, DeepL bản thông thường) thường phá hỏng các ký hiệu toán học LaTeX/MathJax, cấu trúc bảng biểu và vị trí hình ảnh, khiến bài báo trở nên không thể đọc hoặc hiểu sai bản chất.
-2. **Thiếu chuẩn hóa thuật ngữ chuyên ngành:** Các khái niệm học thuật trong các ngành như Trí tuệ nhân tạo (AI), Khoa học máy tính (CS), Y sinh, Vật lý lượng tử thường bị dịch thô cứng, nghĩa vụn vặt hoặc thiếu nhất quán xuyên suốt bài viết.
-3. **Trải nghiệm đọc đứt gãy:** Việc phải chuyển đổi liên tục giữa tệp PDF tiếng Anh gốc và các công cụ tra từ điển rời rạc làm giảm đáng kể tốc độ hấp thụ tri thức của người nghiên cứu.
+1. **Sai lệch công thức và cấu trúc học thuật:** Các công cụ dịch phổ thông làm mất hoặc làm sai cú pháp toán học LaTeX (`$ ... $`, `$$ ... $$`), vỡ các bảng số liệu thực nghiệm (Benchmark Tables) và làm mất hình vẽ sơ đồ kiến trúc mô hình.
+2. **Thuật ngữ CNTT & AI bị dịch thô cứng:** Các khái niệm chuyên sâu như *Attention Mechanism, Latent Space, Zero-Shot, Transformer, Residual Connection, Gradient Descent...* thường bị dịch sai lệch nghĩa nếu không có ngữ cảnh chuyên ngành.
+3. **Cần một công cụ tinh gọn, cá nhân hóa trước mắt và hướng tới cộng đồng:** Thay vì một hệ thống SaaS thương mại phức tạp, mục tiêu trước mắt là một công cụ phục vụ nhu cầu cá nhân tự vận hành, sau đó đóng gói mã nguồn mở (Open-Source) chia sẻ cho cộng đồng nghiên cứu Việt Nam.
 
 ---
 
 ## 2. Tầm nhìn sản phẩm (Product Vision)
 
-Xây dựng **Paper Translation** thành nền tảng hỗ trợ dịch thuật và đọc bài báo khoa học chuyên sâu hàng đầu dành cho cộng đồng nghiên cứu, kỹ sư và sinh viên Việt Nam:
-- **Bảo toàn nguyên vẹn 100%** các cấu trúc học thuật: Công thức toán học (LaTeX/MathJax), bảng biểu dữ liệu và hình minh họa.
-- **Dịch thuật ngữ cảnh chuyên môn cao:** Kết hợp mô hình ngôn ngữ tiên tiến với bộ từ điển thuật ngữ (Glossary) chuyên ngành có thể tùy biến và chuẩn hóa.
-- **Trải nghiệm đọc song ngữ tối ưu (Dual-pane):** Cung cấp không gian đối chiếu song song giữa bản gốc và bản dịch, giúp người đọc vừa nắm bắt nhanh nội dung tiếng Việt vừa đối chiếu chính xác thuật ngữ học thuật gốc tiếng Anh.
+Xây dựng **Paper Translation** thành công cụ dịch bài báo khoa học tinh gọn, dễ sử dụng, tập trung chuyên sâu cho ngành **Công nghệ thông tin & Trí tuệ nhân tạo**:
+- **Hỗ trợ đa định dạng đầu vào:** Ưu tiên hàng đầu cho tệp **PDF** và **DOCX** (hai định dạng phổ biến nhất của tài liệu học thuật).
+- **Trải nghiệm đọc song ngữ trên Web:** Giao diện trực quan cho phép vừa đọc tiếng Việt vừa đối chiếu tức thì với văn bản gốc tiếng Anh.
+- **Tải về tệp PDF bản dịch hoàn chỉnh:** Cho phép tải xuống tệp PDF tiếng Việt đã được dàn trang sạch đẹp, **giữ nguyên 100% công thức toán học LaTeX, hình ảnh minh họa và bảng biểu**.
+- **Định hướng Open-Source:** Thiết kế kiến trúc đơn giản, dễ cài đặt cục bộ (Self-hosted / Docker), cho phép người dùng tự nạp API key (Gemini, OpenAI...) hoặc kết nối mô hình LLM cục bộ (Ollama).
 
 ---
 
 ## 3. Chỉ số thành công & KPIs (Success Metrics)
 
-| Nhóm chỉ số | Chỉ số cụ thể (KPI) | Mục tiêu kỳ vọng | Phương pháp đo lường |
-|---|---|---|---|
-| **Chất lượng học thuật** | Tỷ lệ bảo toàn công thức toán học | 100% công thức LaTeX không bị lỗi cú pháp | Automated validation & kiểm tra ngẫu nhiên |
-| **Độ chuẩn thuật ngữ** | Tính nhất quán của thuật ngữ chuyên ngành | $\ge 95\%$ khớp đúng với Glossary | Kiểm tra tự động đối chiếu Glossary |
-| **Hiệu năng & Tốc độ** | Thời gian xử lý dịch bài báo (20 trang) | $\le 60$ giây cho toàn bộ quy trình | Đo lường độ trễ từ tiếp nhận đến hiển thị |
-| **Trải nghiệm người dùng** | Mức độ hài lòng của độc giả (CSAT) | $\ge 4.5 / 5.0$ | Khảo sát định kỳ người dùng |
-| **Mức độ gắn kết** | Tỷ lệ phiên đọc hoàn thành $\ge 70\%$ bài viết | $\ge 60\%$ tổng số phiên đọc | Tracking tương tác cuộn đọc song ngữ |
+| Chỉ số | Mục tiêu kỳ vọng | Phương pháp đo lường |
+|---|---|---|
+| **Bảo toàn công thức LaTeX** | 100% công thức toán không bị dịch đè hoặc sai cú pháp | Kiểm tra MathJax/KaTeX rendering |
+| **Bảo toàn cấu trúc hình & bảng** | Giữ nguyên vẹn bảng biểu thực nghiệm và hình vẽ minh họa | Đối chiếu cấu trúc tài liệu xuất ra |
+| **Độ chuẩn thuật ngữ CNTT & AI** | $\ge 95\%$ thuật ngữ AI/CNTT được dịch đúng ngữ cảnh | Kiểm tra bộ từ điển chuyên ngành |
+| **Định dạng hỗ trợ** | Tiếp nhận tốt 100% tệp PDF và DOCX hợp lệ | Automated ingestion test |
+| **Trải nghiệm xuất file** | Tải về 1 tệp PDF bản dịch hoàn chỉnh với 1 click | Thao tác trên Web UI |
 
 ---
 
-## 4. Phân khúc người dùng mục tiêu (User Personas)
+## 4. Đối tượng sử dụng mục tiêu (Target Users)
 
-### Persona 1: Nhà nghiên cứu khoa học / Nghiên cứu sinh (PhD / Master)
-- **Bối cảnh:** Cần đọc khối lượng lớn bài báo mỗi tuần để làm tổng quan nghiên cứu (Literature Review) và tìm ý tưởng mới.
-- **Nỗi đau:** Tốn hàng giờ cho mỗi bài báo; công thức toán bị lỗi khi dùng các tiện ích dịch thông thường.
-- **Mục tiêu:** Đọc nhanh bằng tiếng Việt nhưng vẫn đối chiếu được ngay công thức gốc và thuật ngữ học thuật chuẩn.
-
-### Persona 2: Kỹ sư R&D / Chuyên gia công nghệ ứng dụng
-- **Bối cảnh:** Cần nắm bắt nhanh các giải pháp công nghệ mới, kiến trúc mô hình từ các bài báo arXiv để áp dụng vào sản phẩm thực tế.
-- **Nỗi đau:** Thuật ngữ kỹ thuật bị dịch sai ngữ cảnh gây hiểu nhầm logic thuật toán.
-- **Mục tiêu:** Dịch nhanh từ arXiv URL, tra cứu và đóng góp vào bộ từ điển thuật ngữ riêng của dự án.
-
-### Persona 3: Giảng viên & Sinh viên đại học
-- **Bối cảnh:** Nghiên cứu bài tập lớn, đồ án tốt nghiệp hoặc chuẩn bị bài giảng chuyên ngành.
-- **Nỗi đau:** Vốn tiếng Anh học thuật chưa thành thạo, gặp khó khăn khi tiếp cận các bài báo kinh điển.
-- **Mục tiêu:** Bản dịch song ngữ mượt mà, dễ hiểu, có thể xuất ra tài liệu để lưu trữ và học tập.
+1. **Giai đoạn 1 (Cá nhân):**
+   - Bản thân tôi (Nhà nghiên cứu / Kỹ sư CNTT & AI) cần công cụ dịch nhanh tài liệu hàng ngày phục vụ công việc và học tập.
+2. **Giai đoạn 2 (Cộng đồng mã nguồn mở):**
+   - Sinh viên, nghiên cứu sinh, giảng viên và kỹ sư AI/CNTT tại Việt Nam mong muốn một công cụ tự host, miễn phí, không bị giới hạn bởi các dịch vụ thương mại đắt đỏ.
 
 ---
 
-## 5. Ranh giới giải pháp tổng thể (High-level Scope)
+## 5. Ranh giới giải pháp (Refined Scope)
 
 ### In-Scope (Thuộc phạm vi hệ thống):
-- Tiếp nhận tài liệu qua tệp PDF tải lên hoặc liên kết trực tuyến (arXiv URL, DOI).
-- Bóc tách cấu trúc tài liệu học thuật (Abstract, Sections, Math equations, Tables, Figures).
-- Cô lập và bảo toàn biểu thức toán học LaTeX inline và block.
-- Dịch thuật tự động ngữ cảnh chuyên sâu tiếng Anh sang tiếng Việt.
-- Áp dụng bộ từ điển thuật ngữ chuyên ngành (Glossary) trong quá trình dịch.
-- Giao diện đọc song ngữ Dual-pane với tính năng cuộn đồng bộ và biên tập từng đoạn (Segment editing).
-- Xuất bản dịch ra định dạng tài liệu học thuật (Markdown, PDF).
+- Tiếp nhận tệp tài liệu định dạng **PDF** và **DOCX** từ máy tính (kèm hỗ trợ link arXiv tiện lợi).
+- Bóc tách văn bản, cô lập công thức toán học LaTeX, hình ảnh và bảng biểu.
+- Dịch thuật tự động ngữ cảnh chuyên sâu CNTT & AI (sử dụng LLM API hoặc local LLM).
+- Giao diện Web hiển thị bản dịch song ngữ (Dual-Pane) cho trải nghiệm đọc trực quan.
+- Xuất và tải về trực tiếp **tệp PDF bản dịch tiếng Việt** giữ nguyên vẹn công thức toán, hình ảnh, bảng biểu.
 
-### Out-of-Scope (Nằm ngoài phạm vi hệ thống):
-- Xử lý các tài liệu scan cũ chất lượng kém không có lớp văn bản (OCR chữ viết tay, văn bản trước thế kỷ 20).
-- Hệ thống mạng xã hội học thuật, diễn đàn trao đổi hoặc bình duyệt đồng cấp (Peer-review system).
-- Công cụ tự động sinh hoặc viết lại bài báo khoa học mới (Paper generation).
+### Out-of-Scope (Loại bỏ để tinh giản tối đa):
+- Hệ thống quản lý tài khoản người dùng, phân quyền doanh nghiệp, đăng nhập mạng xã hội.
+- Cổng thanh toán, gói thuê bao thương mại.
+- Mạng xã hội bình luận học thuật hoặc chia sẻ bài báo công cộng.
+- Hạ tầng vi dịch vụ (Microservices) hoặc Kubernetes phân tán phức tạp.
