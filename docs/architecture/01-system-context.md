@@ -2,18 +2,17 @@
 
 **Tầng tài liệu**: Architecture Layer (Single Source of Truth)  
 **Hệ thống**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 2.0 (Scaled Down & Focused)  
-**Ngày cập nhật**: 2026-10-05  
+**Phiên bản**: 3.0 (Indra OCR, Single-Call Gemini & HTML Canvas Layout Edition)  
+**Ngày cập nhật**: 2026-10-22  
 **Trạng thái**: Approved  
 
 ---
 
 ## 1. Tổng quan Bối cảnh Hệ thống
 
-Hệ thống **Paper Translation** được thiết kế lại theo hướng tinh giản tối đa, tập trung phục vụ **nhu cầu cá nhân** của nhà nghiên cứu / kỹ sư ngành **Công nghệ thông tin & Trí tuệ nhân tạo (IT & AI)** và hướng tới **mã nguồn mở (Open-Source)** cho cộng đồng.
+Hệ thống **Paper Translation** phiên bản 3.0 khắc phục triệt để các sai lầm của các phiên bản trước đó (chia nhỏ đoạn gây mất ngữ cảnh, vỡ bố cục 2 cột và mất hình ảnh). Hệ thống được thiết kế theo luồng kiến trúc mới:
 
-Hệ thống loại bỏ toàn bộ các thành phần phức tạp của hệ thống SaaS thương mại (quản lý người dùng, phân quyền đa cấp, thanh toán) để tập trung giải quyết xuất sắc một bài toán duy nhất:
-> **Tiếp nhận bài báo CNTT & AI (PDF hoặc DOCX) $\rightarrow$ Dịch chuẩn xác giữ 100% LaTeX, bảng biểu, hình ảnh $\rightarrow$ Đọc song ngữ trên Web $\rightarrow$ Tải về tệp PDF bản dịch tiếng Việt hoàn chỉnh.**
+> **Paper PDF $\rightarrow$ Indra OCR (Layout, Text, Reading Order, LaTeX, Tables) $\rightarrow$ Gemini API (Dịch toàn văn 1 lần duy nhất) $\rightarrow$ HTML Canvas Layout Engine (Tái hiện bài báo như bản gốc trên Web) $\rightarrow$ Xuất PDF 1-click.**
 
 ---
 
@@ -21,15 +20,15 @@ Hệ thống loại bỏ toàn bộ các thành phần phức tạp của hệ t
 
 ### 2.1. Tác nhân con người (Human Actor)
 - **Cá nhân Nhà nghiên cứu / Kỹ sư CNTT & AI:**
-  - Tải lên tệp bài báo định dạng **PDF** hoặc **DOCX** (hoặc dán liên kết arXiv).
-  - Đọc và đối chiếu song ngữ trực tiếp trên giao diện Web UI (Dual-Pane).
-  - Tải về tệp PDF bản dịch tiếng Việt hoàn chỉnh để lưu trữ ngoại tuyến hoặc in ấn học tập.
+  - Tải lên tệp bài báo khoa học định dạng **PDF** (hoặc dán mã/liên kết arXiv).
+  - Trực tiếp xem và tương tác với bài báo bản dịch tiếng Việt trên giao diện **HTML Canvas** (giữ nguyên layout 2 cột, vị trí hình ảnh và bảng biểu như bản gốc).
+  - Tải về tệp PDF bản dịch tiếng Việt hoàn chỉnh với 1 click.
 
 ### 2.2. Hệ thống dịch vụ bên ngoài (External Services)
-- **AI Translation Engine / LLM Provider:**
-  - Cung cấp khả năng dịch thuật ngữ cảnh chuyên sâu CNTT & AI (Gemini API, OpenAI API hoặc mô hình chạy cục bộ Ollama / Local LLM).
+- **Google Gemini API (Cloud LLM - Single Call):**
+  - Cung cấp khả năng tiếp nhận toàn bộ bài báo trong 1 lần gọi duy nhất nhờ cửa sổ ngữ cảnh khổng lồ (1M–2M tokens), đảm bảo tính nhất quán và bảo toàn ngữ cảnh học thuật tuyệt đối.
 - **arXiv Repository (Tùy chọn tiện ích):**
-  - Cung cấp tệp bài báo công khai khi người dùng nhập link arXiv.
+  - Tự động tải tệp PDF bài báo gốc khi người dùng nhập URL hoặc arXiv ID.
 
 ---
 
@@ -38,60 +37,48 @@ Hệ thống loại bỏ toàn bộ các thành phần phức tạp của hệ t
 ```mermaid
 flowchart LR
     subgraph Actors ["Tác nhân (Actors)"]
-        User["👤 Bạn (Kỹ sư / Nhà nghiên cứu CNTT & AI)"]
-        LLM["🤖 AI Translation Engine<br>(Gemini / OpenAI / Ollama)"]
+        User["👤 Kỹ sư / Nhà nghiên cứu CNTT & AI"]
+        GeminiAPI["🤖 Google Gemini API<br>(Context Window 1M-2M Tokens)"]
+        ArxivAPI["🌐 arXiv API / PDF Storage"]
     end
 
-    subgraph SystemBoundary ["Hệ Thống Paper Translation (Personal & Open-Source)"]
-        UC1["(Tải tệp bài báo: Ưu tiên PDF & DOCX)"]
-        UC2["(Bóc tách cấu trúc: Bảo toàn LaTeX, Hình ảnh & Bảng biểu)"]
-        UC3["(Dịch thuật ngữ cảnh chuyên ngành CNTT & AI)"]
-        UC4["(Đọc & Đối chiếu song ngữ trên Web UI)"]
-        UC5["(Tải về tệp PDF bản dịch tiếng Việt hoàn chỉnh)"]
+    subgraph SystemBoundary ["Hệ Thống Paper Translation v3.0"]
+        UC1["(1. Nạp bài báo PDF / arXiv)"]
+        UC2["(2. Phân tích bố cục & OCR qua Indra OCR)"]
+        UC3["(3. Trích xuất hình ảnh & sơ đồ theo BBox)"]
+        UC4["(4. Dịch thuật toàn văn trong 1 lần gọi Gemini)"]
+        UC5["(5. Tái hiện bài báo bản dịch trên HTML Canvas)"]
+        UC6["(6. Xuất tệp PDF bản dịch nguyên vẹn bố cục)"]
 
         UC1 -.->|<<include>>| UC2
         UC2 -.->|<<include>>| UC3
-        UC3 -.->|<<include>>| UC4
-        UC4 -.->|<<extend>>| UC5
+        UC2 -.->|<<include>>| UC4
+        UC4 -.->|<<include>>| UC5
+        UC5 -.->|<<extend>>| UC6
     end
 
     User --> UC1
-    User --> UC4
     User --> UC5
-
-    UC3 <-->|Dịch thuật ngữ cảnh CNTT & AI| LLM
+    User --> UC6
+    UC1 <-->|Tải tệp PDF| ArxivAPI
+    UC4 <-->|Single-call Full-Text Translation| GeminiAPI
 ```
 
 ---
 
-## 4. Dòng chảy Nghiệp vụ Tinh gọn (High-Level Process Flow)
+## 4. Dòng chảy Nghiệp vụ (High-Level Process Flow)
 
 ```mermaid
 flowchart TD
-    Start([Người dùng bắt đầu]) --> IngestChoice{Chọn tệp bài báo}
-    IngestChoice -- Tệp PDF --> IngestPDF[Tiếp nhận tệp PDF]
-    IngestChoice -- Tệp DOCX --> IngestDOCX[Tiếp nhận tệp DOCX]
-    IngestChoice -- Link arXiv --> IngestArxiv[Tải PDF từ arXiv]
-
-    IngestPDF --> Parse[Bóc tách cấu trúc tài liệu]
-    IngestDOCX --> Parse
-    IngestArxiv --> Parse
-
-    Parse --> Isolate[1. Cô lập công thức toán LaTeX $ / $$<br>2. Trích xuất & giữ nguyên Bảng biểu<br>3. Trích xuất & giữ nguyên Hình ảnh minh họa]
-    Isolate --> Translate[Gửi các phân đoạn đến AI Translation Engine<br>Áp dụng Prompt ngữ cảnh CNTT & AI]
-    Translate --> Reassemble[Tái nạp công thức toán LaTeX & Ghép nối dữ liệu]
-    
-    Reassemble --> WebUI[Hiển thị giao diện đọc song ngữ Dual-Pane trên Web]
-    WebUI --> UserAction{Thao tác người dùng}
-    UserAction -- Đọc & Đối chiếu --> WebUI
-    UserAction -- Tải bản dịch --> ExportPDF[Biên dịch & Tải về tệp PDF tiếng Việt hoàn chỉnh]
-    ExportPDF --> Finish([Kết thúc])
+    Start([Bắt đầu]) --> Upload[Người dùng tải file PDF hoặc nhập arXiv ID]
+    Upload --> RunIndra[Indra OCR chạy trên CPU: Bóc tách Bounding Boxes, Layout, Text, LaTeX, Tables]
+    RunIndra --> CropImages[Trích xuất hình ảnh chất lượng cao theo BBox của Indra]
+    RunIndra --> PackPrompt[Đóng gói toàn văn bài báo kèm Block IDs & Chỉ dẫn thuật ngữ IT & AI]
+    PackPrompt --> CallGemini[Gọi Gemini API trong 1 lần gọi duy nhất - Full Context Translation]
+    CallGemini --> ParseTranslation[Tiếp nhận bản dịch tiếng Việt, ánh xạ vào cấu trúc Block IDs]
+    CropImages --> RenderCanvas[HTML Canvas Engine: Vẽ nền, đặt ảnh sơ đồ & điền văn bản dịch theo tọa độ BBox gốc]
+    ParseTranslation --> RenderCanvas
+    RenderCanvas --> WebViewer[Người dùng tương tác xem bài báo dịch trên Web UI]
+    WebViewer --> ExportPDF[Xuất tệp PDF bản dịch chuẩn bố cục gốc]
+    ExportPDF --> End([Hoàn tất])
 ```
-
----
-
-## 5. Các Bất biến Hệ thống (System Invariants)
-
-1. **Bất biến về Công thức Toán học:** 100% công thức toán học LaTeX (inline `$ $` và display `$$ $$` hoặc môi trường `\begin{equation}`) phải được cô lập tuyệt đối trước khi dịch và tái nạp nguyên vẹn vào bản dịch.
-2. **Bất biến về Bảng biểu & Hình ảnh:** Bảng số liệu thực nghiệm và hình vẽ minh họa kiến trúc mô hình phải được bảo toàn nguyên vẹn vị trí tương đối trong bài viết.
-3. **Bất biến về Tính đơn giản (Simplicity Invariant):** Không triển khai bất kỳ tính năng thừa thãi nào ngoài phạm vi: Nhập PDF/DOCX $\rightarrow$ Dịch CNTT/AI $\rightarrow$ Đọc song ngữ Web $\rightarrow$ Tải PDF bản dịch tiếng Việt.

@@ -2,64 +2,68 @@
 
 **Tầng tài liệu**: Business Layer  
 **Dự án**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 2.0 (Scaled Down & Focused)  
-**Ngày cập nhật**: 2026-10-05  
+**Phiên bản**: 3.0 (Indra OCR, Single-Call Gemini & HTML Canvas Layout Edition)  
+**Ngày cập nhật**: 2026-10-22  
 **Trạng thái**: Approved  
 
 ---
 
 ## 1. Bối cảnh & Vấn đề nghiệp vụ (Problem Statement)
 
-Là một kỹ sư / nhà nghiên cứu trong lĩnh vực **Công nghệ thông tin (IT)** và **Trí tuệ nhân tạo (AI / Machine Learning / Deep Learning)**, nhu cầu đọc và hấp thụ các bài báo khoa học xuất sắc (từ arXiv, hội nghị NeurIPS, ICML, CVPR, ICLR, ACL...) là công việc diễn ra thường xuyên. Tuy nhiên, quá trình đọc và dịch các tài liệu này gặp phải các rào cản cụ thể:
+Là một kỹ sư / nhà nghiên cứu trong lĩnh vực **Công nghệ thông tin (IT)** và **Trí tuệ nhân tạo (AI / Machine Learning / Deep Learning)**, nhu cầu đọc và hấp thụ các bài báo khoa học xuất sắc (từ arXiv, hội nghị NeurIPS, ICML, CVPR, ICLR, ACL...) là công việc diễn ra thường xuyên. 
 
-1. **Sai lệch công thức và cấu trúc học thuật:** Các công cụ dịch phổ thông làm mất hoặc làm sai cú pháp toán học LaTeX (`$ ... $`, `$$ ... $$`), vỡ các bảng số liệu thực nghiệm (Benchmark Tables) và làm mất hình vẽ sơ đồ kiến trúc mô hình.
-2. **Thuật ngữ CNTT & AI bị dịch thô cứng:** Các khái niệm chuyên sâu như *Attention Mechanism, Latent Space, Zero-Shot, Transformer, Residual Connection, Gradient Descent...* thường bị dịch sai lệch nghĩa nếu không có ngữ cảnh chuyên ngành.
-3. **Cần một công cụ tinh gọn, cá nhân hóa trước mắt và hướng tới cộng đồng:** Thay vì một hệ thống SaaS thương mại phức tạp, mục tiêu trước mắt là một công cụ phục vụ nhu cầu cá nhân tự vận hành, sau đó đóng gói mã nguồn mở (Open-Source) chia sẻ cho cộng đồng nghiên cứu Việt Nam.
+Tuy nhiên, các giải pháp dịch thuật truyền thống (kể cả phiên bản thử nghiệm ban đầu của dự án) đã bộc lộ **các sai lầm nghiêm trọng**:
+
+1. **Mất đứt gãy ngữ cảnh do băm nhỏ văn bản (Chunking Context Loss):** Khi chia cắt bài báo thành các đoạn ngắn rời rạc (paragraphs/chunks) để dịch, mô hình AI mất đi góc nhìn toàn cục, dịch sai lệch các đại từ tham chiếu liên trang (*"this framework", "our proposed method", "it"*), thuật ngữ học thuật bị bất nhất giữa phần mở đầu và kết luận.
+2. **Vỡ hoàn toàn cấu trúc & thứ tự đọc (Reading Order Spillage):** Bài báo khoa học hầu hết có định dạng 2 cột (Double-Column), xen kẽ bảng số liệu và hình ảnh. Việc bóc tách văn bản thô sơ làm chữ cột trái nhảy sang cột phải, biến bài báo thành một mớ hỗn độn.
+3. **Mất diện mạo học thuật chuẩn (Loss of Original Layout):** Render lại văn bản dịch thành trang blog HTML tuyến tính khiến người đọc mất khả năng định vị trực quan sơ đồ, đồ thị và bảng thực nghiệm so với tài liệu gốc.
 
 ---
 
-## 2. Tầm nhìn sản phẩm (Product Vision)
+## 2. Tầm nhìn sản phẩm (Product Vision - Version 3.0)
 
-Xây dựng **Paper Translation** thành công cụ dịch bài báo khoa học tinh gọn, dễ sử dụng, tập trung chuyên sâu cho ngành **Công nghệ thông tin & Trí tuệ nhân tạo**:
-- **Hỗ trợ đa định dạng đầu vào:** Ưu tiên hàng đầu cho tệp **PDF** và **DOCX** (hai định dạng phổ biến nhất của tài liệu học thuật).
-- **Trải nghiệm đọc song ngữ trên Web:** Giao diện trực quan cho phép vừa đọc tiếng Việt vừa đối chiếu tức thì với văn bản gốc tiếng Anh.
-- **Tải về tệp PDF bản dịch hoàn chỉnh:** Cho phép tải xuống tệp PDF tiếng Việt đã được dàn trang sạch đẹp, **giữ nguyên 100% công thức toán học LaTeX, hình ảnh minh họa và bảng biểu**.
-- **Định hướng Open-Source:** Thiết kế kiến trúc đơn giản, dễ cài đặt cục bộ (Self-hosted / Docker), cho phép người dùng tự nạp API key (Gemini, OpenAI...) hoặc kết nối mô hình LLM cục bộ (Ollama).
+Xây dựng **Paper Translation** thành công cụ dịch bài báo khoa học tinh gọn, đạt chuẩn xuất bản học thuật:
+- **Bóc tách bố cục chuẩn xác bằng Indra OCR (`datalab-to/indra`):** Nhận diện cấu trúc 2 cột, thứ tự đọc chuẩn (reading order), bảng biểu HTML và công thức toán học LaTeX.
+- **Trích xuất bảo toàn hình ảnh minh họa:** Tự động phát hiện và trích xuất nguyên vẹn các sơ đồ kiến trúc, đồ thị và hình vẽ từ PDF gốc dựa trên Bounding Box của OCR.
+- **Dịch toàn văn 1 lần gọi duy nhất (Gemini Single-Call Translation):** Tận dụng cửa sổ ngữ cảnh khổng lồ (1M–2M tokens) của Google Gemini để dịch toàn bộ bài báo trong 1 request duy nhất, loại bỏ triệt để hiện tượng mất ngữ cảnh và đảm bảo văn phong học thuật đồng nhất 100%.
+- **Tái hiện nguyên bản trên Web bằng HTML Canvas (Same-Origin Paper View):** Trực quan hóa bản dịch tiếng Việt trực tiếp lên canvas theo đúng tỷ lệ, vị trí 2 cột, khung ảnh và bảng biểu của tài liệu gốc.
+- **Xuất PDF 1-click chất lượng cao:** Xuất bản dịch từ HTML Canvas sang tệp PDF tiếng Việt giữ nguyên bố cục tương đương bản gốc.
 
 ---
 
 ## 3. Chỉ số thành công & KPIs (Success Metrics)
 
-| Chỉ số | Mục tiêu kỳ vọng | Phương pháp đo lường |
+| Chỉ số | Mục tiêu kỳ vọng (v3.0) | Phương pháp đo lường |
 |---|---|---|
-| **Bảo toàn công thức LaTeX** | 100% công thức toán không bị dịch đè hoặc sai cú pháp | Kiểm tra MathJax/KaTeX rendering |
-| **Bảo toàn cấu trúc hình & bảng** | Giữ nguyên vẹn bảng biểu thực nghiệm và hình vẽ minh họa | Đối chiếu cấu trúc tài liệu xuất ra |
-| **Độ chuẩn thuật ngữ CNTT & AI** | $\ge 95\%$ thuật ngữ AI/CNTT được dịch đúng ngữ cảnh | Kiểm tra bộ từ điển chuyên ngành |
-| **Định dạng hỗ trợ** | Tiếp nhận tốt 100% tệp PDF và DOCX hợp lệ | Automated ingestion test |
-| **Trải nghiệm xuất file** | Tải về 1 tệp PDF bản dịch hoàn chỉnh với 1 click | Thao tác trên Web UI |
+| **Tính toàn vẹn ngữ cảnh** | 100% bài báo được dịch trong **1 lần gọi AI duy nhất** | Ghi log API call (Single Prompt Request) |
+| **Bảo toàn bố cục gốc (Layout Fidelity)** | Tái hiện đúng $\ge 95\%$ vị trí 2 cột, khối văn bản và hình vẽ trên Canvas | Đối chiếu trực quan Canvas với PDF gốc |
+| **Bảo toàn công thức LaTeX** | 100% công thức toán học không bị dịch đè hoặc sai cú pháp | Kiểm tra MathJax / KaTeX rendering |
+| **Bảo toàn hình ảnh & đồ thị** | 100% sơ đồ và hình vẽ được crop sắc nét và đặt đúng vị trí | Kiểm tra Asset Manager & Canvas Image Layer |
+| **Độ chuẩn thuật ngữ CNTT & AI** | $\ge 98\%$ thuật ngữ AI/CNTT được dịch đúng ngữ cảnh | Kiểm tra đối chiếu từ điển chuyên sâu |
+| **Trải nghiệm xuất PDF** | 1 click xuất ra tệp PDF tiếng Việt tương tự bố cục gốc | Xuất qua Canvas to PDF engine |
 
 ---
 
 ## 4. Đối tượng sử dụng mục tiêu (Target Users)
 
 1. **Giai đoạn 1 (Cá nhân):**
-   - Bản thân tôi (Nhà nghiên cứu / Kỹ sư CNTT & AI) cần công cụ dịch nhanh tài liệu hàng ngày phục vụ công việc và học tập.
+   - Bản thân tôi (Nhà nghiên cứu / Kỹ sư CNTT & AI) cần đọc bài báo chuyên ngành nhanh chóng, chuẩn xác và có thể in/lưu trữ bản dịch PDF đẹp mắt.
 2. **Giai đoạn 2 (Cộng đồng mã nguồn mở):**
-   - Sinh viên, nghiên cứu sinh, giảng viên và kỹ sư AI/CNTT tại Việt Nam mong muốn một công cụ tự host, miễn phí, không bị giới hạn bởi các dịch vụ thương mại đắt đỏ.
+   - Sinh viên, nghiên cứu sinh, giảng viên và kỹ sư AI/CNTT tại Việt Nam mong muốn một công cụ tự host, miễn phí, cài đặt 1-click Docker, sử dụng CPU mà không cần GPU đắt tiền (nhờ Indra ONNX).
 
 ---
 
-## 5. Ranh giới giải pháp (Refined Scope)
+## 5. Ranh giới giải pháp (Refined Scope v3.0)
 
-### In-Scope (Thuộc phạm vi hệ thống):
-- Tiếp nhận tệp tài liệu định dạng **PDF** và **DOCX** từ máy tính (kèm hỗ trợ link arXiv tiện lợi).
-- Bóc tách văn bản, cô lập công thức toán học LaTeX, hình ảnh và bảng biểu.
-- Dịch thuật tự động ngữ cảnh chuyên sâu CNTT & AI (sử dụng LLM API hoặc local LLM).
-- Giao diện Web hiển thị bản dịch song ngữ (Dual-Pane) cho trải nghiệm đọc trực quan.
-- Xuất và tải về trực tiếp **tệp PDF bản dịch tiếng Việt** giữ nguyên vẹn công thức toán, hình ảnh, bảng biểu.
+### In-Scope:
+- Tiếp nhận tệp **PDF** bài báo khoa học (tải lên trực tiếp hoặc qua liên kết arXiv).
+- Chạy **Indra OCR** trên CPU để phân tích layout, nhận dạng text, reading order, bảng HTML và công thức LaTeX.
+- Trích xuất ảnh sơ đồ/đồ thị từ PDF gốc dựa trên tọa độ Bounding Box của khối `Picture`/`Figure`.
+- Đóng gói toàn văn bài báo và gọi **Google Gemini API trong 1 lần gọi duy nhất** để dịch sang tiếng Việt.
+- Sử dụng **HTML Canvas** tại Frontend để tái hiện lại giao diện bài báo bản dịch tiếng Việt giống hệt tài liệu gốc.
+- Hỗ trợ xem trực quan trên Web (phóng to, thu nhỏ, cuộn trang) và xuất tệp **PDF bản dịch hoàn chỉnh**.
 
-### Out-of-Scope (Loại bỏ để tinh giản tối đa):
-- Hệ thống quản lý tài khoản người dùng, phân quyền doanh nghiệp, đăng nhập mạng xã hội.
-- Cổng thanh toán, gói thuê bao thương mại.
-- Mạng xã hội bình luận học thuật hoặc chia sẻ bài báo công cộng.
-- Hạ tầng vi dịch vụ (Microservices) hoặc Kubernetes phân tán phức tạp.
+### Out-of-Scope:
+- Hệ thống tài khoản người dùng, đăng nhập OAuth, thanh toán SaaS.
+- Huấn luyện lại model OCR (chỉ sử dụng model Indra pretrained có sẵn).
+- Chỉnh sửa trực tiếp file PDF nhị phân dạng vector thô (thay vào đó vẽ layer tái tạo trên Canvas).

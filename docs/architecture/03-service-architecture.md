@@ -2,122 +2,126 @@
 
 **Tầng tài liệu**: Architecture Layer (Single Source of Truth)  
 **Hệ thống**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 2.0 (Scaled Down & Focused)  
-**Ngày cập nhật**: 2026-10-05  
+**Phiên bản**: 3.1 (Reviewed & Hardened — Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas)  
+**Ngày cập nhật**: 2026-10-22  
 **Trạng thái**: Approved  
 
 ---
 
-## 1. Chiến lược Phân rã Dịch vụ Tinh gọn (Lightweight Modular Architecture)
+## 1. Chiến lược Phân rã Dịch vụ (Modular Architecture v3.1)
 
-Để đảm bảo dự án có thể **chạy ngay lập tức trên máy tính cá nhân bằng 1 lệnh duy nhất** và **dễ dàng phân phối mở mã nguồn cho cộng đồng**, hệ thống loại bỏ các thành phần cụm phân tán (Redis, Celery, MinIO server) và quy hoạch thành một **Self-Contained Modular Monolith**:
+Hệ thống được tổ chức theo kiến trúc **Self-Contained Modular Monolith** (FastAPI + SQLite WAL + Local Disk), đảm bảo chạy mượt mà bằng 1 lệnh duy nhất mà không cần Redis hay GPU:
 
 ```mermaid
 flowchart LR
-    subgraph FrontendSPA ["Frontend (React/Vite)"]
-        UI["Web UI Components<br>(Dual-Pane Reader, Upload Zone, PDF Export)"]
+    subgraph FrontendSPA ["Frontend (React / Vite)"]
+        UI["Web UI Controls<br>(Upload, Zoom, Toggle Original/VI)"]
+        CanvasEngine["🎨 3-Layer HTML Canvas Engine<br>(Layer 0: Base Page, Layer 1: Whiteout, Layer 2: VI Text + KaTeX)"]
+        PDFExport["📑 Canvas-to-PDF Exporter"]
+        UI <--> CanvasEngine
+        CanvasEngine --> PDFExport
     end
 
     subgraph BackendApp ["Backend Application (FastAPI Single Process)"]
-        API["API Routers<br>(Ingestion, Sessions, Segments, Export)"]
+        API["API Routers<br>(Ingestion, Sessions, Canvas-Data, Assets)"]
         
-        subgraph CoreServices ["Core Domain Services"]
-            IngestionSvc["1. Ingestion Service<br>(PDF Validator, DOCX Validator, arXiv Fetcher)"]
-            ParserSvc["2. Parser & Isolator Engine<br>(PyMuPDF, python-docx, Math & Media Extractor)"]
-            TranslationSvc["3. IT & AI Translation Service<br>(Domain Prompt, Batching, Adapter LLM)"]
-            ExportSvc["4. PDF Render Service<br>(HTML/KaTeX Template -> WeasyPrint)"]
-            ProgressHub["5. In-Memory SSE Broadcaster<br>(asyncio Event Queue)"]
+        subgraph CoreServices ["Core Domain Services v3.1"]
+            IngestionSvc["1. Ingestion Service<br>(PDF Validator & arXiv Downloader)"]
+            IndraOcrSvc["2. Indra OCR & Coordinate Normalizer<br>(indra_ocr ONNX + Normalized BBox [0..1])"]
+            PageAssetSvc["3. Page Snapshot & Figure Extractor<br>(PyMuPDF Base Page PNG + Figure Crops)"]
+            GeminiTranslator["4. Gemini Full-Text Translator<br>(Smart Filter + Single-Call 64K + Auto-Resume)"]
+            LayoutMapper["5. Layout Coordinate Mapper<br>(Bind Translated Blocks to Normalized BBoxes)"]
+            ProgressHub["6. SSE Broadcaster<br>(Real-time Phase & Progress Streaming)"]
         end
 
         Repo["Repository Layer<br>(SQLAlchemy Async)"]
     end
 
     subgraph LocalState ["Local Storage Tier"]
-        SQLite[(SQLite DB<br>paper_translation.db)]
-        DiskStore[(Local Disk Storage<br>storage/)]
+        SQLite[(SQLite DB WAL<br>paper_translation.db)]
+        DiskStore[(Local Disk Storage<br>raw_pdfs/, pages/, figures/)]
     end
 
     UI <-->|HTTP REST & SSE| API
     API --> IngestionSvc
-    API --> ExportSvc
+    API --> LayoutMapper
     API <--> ProgressHub
 
-    IngestionSvc --> ParserSvc
-    ParserSvc --> TranslationSvc
-    TranslationSvc --> ProgressHub
+    IngestionSvc --> IndraOcrSvc
+    IndraOcrSvc --> PageAssetSvc
+    PageAssetSvc --> GeminiTranslator
+    GeminiTranslator --> LayoutMapper
     
     IngestionSvc <--> DiskStore
-    ParserSvc <--> DiskStore
-    ExportSvc <--> DiskStore
-    
-    IngestionSvc --> Repo
-    ParserSvc --> Repo
-    TranslationSvc --> Repo
-    ExportSvc --> Repo
+    PageAssetSvc <--> DiskStore
+    LayoutMapper --> Repo
     Repo <--> SQLite
+    
+    IndraOcrSvc -.-> ProgressHub
+    PageAssetSvc -.-> ProgressHub
+    GeminiTranslator -.-> ProgressHub
+    LayoutMapper -.-> ProgressHub
 ```
 
 ---
 
-## 2. Chi tiết các Phân hệ & Trách nhiệm (Subsystems & Responsibilities)
+## 2. Đặc Tả Chi Tiết Từng Dịch Vụ (Detailed Service Specifications)
 
-### 2.1. Phân hệ Tiếp nhận Tài liệu (Ingestion Subsystem)
-- **Vị trí mã nguồn:** `backend/app/services/ingestion/`
-- **Trách nhiệm:**
-  - Tiếp nhận tệp tải lên từ Web UI, phân loại định dạng: **PDF** (MIME `%PDF-`) hoặc **DOCX** (MIME OpenXML zip).
-  - Thu thập tệp và metadata từ liên kết hoặc mã bài báo arXiv (`arxiv_id`).
-  - Lưu tệp gốc vào thư mục cục bộ `storage/raw/{session_id}/original.[pdf|docx]`.
-  - Khởi tạo bản ghi `PaperSession` trong SQLite với trạng thái `PENDING`.
+### 2.1. Ingestion Service (`ingestion_service.py`)
+- **Nhiệm vụ:**
+  - Xác thực tệp PDF tải lên (kiểm tra magic bytes `%PDF-`, dung lượng $\le 50\text{MB}$).
+  - Tự động tải tệp PDF từ `https://arxiv.org/pdf/{arxiv_id}.pdf` khi người dùng nhập mã hoặc URL arXiv.
+  - Lưu tệp gốc vào `storage/raw_pdfs/{session_id}.pdf`.
 
-### 2.2. Phân hệ Bóc tách & Cô lập Học thuật (Parser & Preservation Engine)
-- **Vị trí mã nguồn:** `backend/app/services/parser/`
-- **Trách nhiệm:**
-  - **Trình bóc tách PDF (`PdfParser`):** Sử dụng `PyMuPDF (fitz)` để trích xuất các khối văn bản (Text Blocks), tọa độ và nhận diện công thức toán học inline `$ ... $` và display `$$ ... $$`.
-  - **Trình bóc tách DOCX (`DocxParser`):** Sử dụng `python-docx` để duyệt qua các đoạn văn bản (Paragraphs), bảng biểu (`tables`) và trích xuất hình ảnh nhúng (`InlineShapes`) lưu vào `storage/assets/{session_id}/`.
-  - **Mô-đun cô lập (Isolator):** Thay thế toàn bộ công thức toán học bằng token bảo vệ an toàn `<<<MATH_TOKEN_NNN>>>` và lưu chuỗi LaTeX gốc vào bảng `math_tokens`.
+### 2.2. Indra OCR & Coordinate Normalizer Service (`indra_ocr_service.py`)
+- **Nhiệm vụ:**
+  - Sử dụng API Python chính thức của `indra_ocr` (`conv = indra_ocr.load(threads=4); conv.convert(pdf_path)`).
+  - Thu thập danh sách các khối bố cục (`page.blocks`) theo thứ tự đọc chuẩn (`reading_order`), bao gồm:
+    - `label`: Nhãn ngữ nghĩa của khối (`text`, `section header`, `title`, `table`, `caption`, `footnote`, `list`, `page header`, `page footer`, `figure`).
+    - `box` / `bbox`: Tọa độ pixel trên trang đã được khử nghiêng (`rotation`, `skew`).
+    - `text`: Nội dung văn bản hoặc bảng HTML/LaTeX của khối.
+  - **Chuẩn hóa Hệ Tọa Độ (Coordinate Normalization):**
+    - Quy đổi mọi tọa độ hộp từ pixel của ảnh OCR sang hệ tọa độ tỷ lệ tương đối `[x0_norm, y0_norm, x1_norm, y1_norm]` nằm trong đoạn `[0.0, 1.0]` theo chiều rộng và chiều cao trang:
+      $$x_{\text{norm}} = \frac{x_{\text{px}}}{W_{\text{ocr}}}, \quad y_{\text{norm}} = \frac{y_{\text{px}}}{H_{\text{ocr}}}$$
+    - Nhờ hệ tọa độ `[0.0 .. 1.0]`, mọi sai lệch về DPI giữa Indra OCR, PyMuPDF (72 DPI) và HTML Canvas đều được loại bỏ hoàn toàn.
 
-### 2.3. Phân hệ Dịch thuật Chuyên sâu CNTT & AI (IT & AI Translation Engine)
-- **Vị trí mã nguồn:** `backend/app/services/translation/`
-- **Trách nhiệm:**
-  - Đóng gói System Prompt chuyên biệt cho lĩnh vực **Công nghệ thông tin & Trí tuệ nhân tạo**, hướng dẫn LLM hiểu chuẩn mực các thuật ngữ *Attention, Transformer, Residual, Latent, Gradient, Backprop...*.
-  - Gom các phân đoạn văn bản thành từng lô (Batch 5–10 phân đoạn) để tối ưu thời gian phản hồi và hạn mức API.
-  - Hỗ trợ linh hoạt:
-    - **Cloud API Adapter:** Tích hợp Google Gemini API (mặc định cho độ trễ nhanh và chi phí rẻ), OpenAI API, Claude API.
-    - **Local LLM Adapter:** Tích hợp Ollama (`http://localhost:11434`) cho phép người dùng chạy hoàn toàn offline không cần internet.
-  - Tái nạp chính xác các chuỗi LaTeX gốc vào văn bản tiếng Việt sau khi dịch.
+### 2.3. Page Snapshot & Figure Extractor Service (`page_asset_service.py`)
+- **Nhiệm vụ:**
+  - Dùng `PyMuPDF (fitz)` kết xuất từng trang PDF gốc thành ảnh nền độ phân giải cao (`storage/pages/{session_id}/page_{page_num}.png` ở 200 DPI) làm **Layer 0** cho HTML Canvas.
+  - Việc có sẵn ảnh nền trang gốc (Layer 0) đảm bảo **100% sơ đồ vector (TikZ/PGFPlots), biểu đồ, đường viền bảng và công thức toán học độc lập** luôn hiển thị nguyên vẹn trên Canvas ngay cả khi OCR không đóng khung riêng cho hình vẽ.
+  - Đồng thời, với các khối được đánh nhãn `figure` / `picture`, hệ thống hỗ trợ crop riêng thành `storage/figures/{session_id}/page_{p}_fig_{idx}.png` để phục vụ xem chi tiết.
 
-### 2.4. Phân hệ Phát tiến trình Thời gian thực (SSE Broadcaster)
-- **Vị trí mã nguồn:** `backend/app/services/sse/`
-- **Trách nhiệm:**
-  - Sử dụng cơ chế hàng đợi bất đồng bộ trong bộ nhớ (`asyncio.Queue`) gắn với từng `session_id`.
-  - Đẩy sự kiện tiến trình qua endpoint `GET /api/v1/sessions/{session_id}/progress`:
-    - `10%`: Đã tiếp nhận và lưu tệp.
-    - `30%`: Đã bóc tách cấu trúc và cô lập công thức toán.
-    - `35% -> 90%`: Tiến trình dịch từng phân đoạn (vd: 45/120 phân đoạn).
-    - `100%`: Hoàn tất, sẵn sàng hiển thị trên Web song ngữ và tải PDF.
+### 2.4. Gemini Full-Text Translator (`gemini_translator.py`)
+- **Nhiệm vụ:**
+  - **Bước 1 — Bộ lọc Khối Cần Dịch (Smart Translatable Filter):**
+    - Đánh dấu `is_translatable = False` đối với:
+      1. Các khối `page header`, `page footer` (số trang, tên hội nghị ở lề trang).
+      2. Các khối thuộc mục **References / Bibliography** (bắt đầu từ tiêu đề `References` hoặc `Bibliography` ở cuối bài báo) — vì tài liệu tham khảo quốc tế cần giữ nguyên tên tiếng Anh để tra cứu và chiếm tới 20–30% độ dài bài báo.
+      3. Các khối chỉ chứa ký hiệu toán học thuần túy hoặc số liệu.
+  - **Bước 2 — Đóng gói Toàn văn & Gọi Gemini Single-Call:**
+    - Gom tất cả các khối `is_translatable = True` của toàn bộ bài báo thành một chuỗi văn bản có cấu trúc:
+      ```text
+      [[BLOCK_ID_0001]]
+      Attention Is All You Need
+      [[BLOCK_ID_0002]]
+      The dominant sequence transduction models are based on complex recurrent or convolutional neural networks...
+      ```
+    - Gửi trong **1 request duy nhất** tới Google Gemini API (mặc định model `gemini-3.5-flash-lite`) với tham số `max_tokens: 65536` và bộ từ điển chuyên ngành `IT_AI_GLOSSARY`.
+  - **Bước 3 — Kiểm tra Toàn vẹn & Auto-Continuation Guard:**
+    - Bóc tách kết quả dịch theo regex `\[\[BLOCK_ID_(\d{4})\]\]`.
+    - Nếu bài báo cực dài (> 40 trang) khiến phản hồi chạm trần `finish_reason == "length"` hoặc còn thiếu một số `block_id` cuối, dịch vụ tự động gửi 1 lệnh tiếp nối (continuation call) chỉ chứa các `block_id` còn thiếu kèm ngữ cảnh tóm tắt, đảm bảo 100% khối văn bản đều được dịch đầy đủ.
 
-### 2.5. Phân hệ Kết xuất PDF Bản dịch (PDF Export Engine)
-- **Vị trí mã nguồn:** `backend/app/services/export/`
-- **Trách nhiệm:**
-  - Nạp dữ liệu các phân đoạn tiếng Việt, hình ảnh kiến trúc và bảng số liệu thực nghiệm.
-  - Đưa vào template HTML chuẩn học thuật (tích hợp KaTeX kết xuất công thức toán học sắc nét và CSS Paged Media dàn trang A4).
-  - Biên dịch template thành tệp PDF hoàn chỉnh thông qua thư viện `WeasyPrint` và lưu tại `storage/exports/{session_id}/translated.pdf`.
+### 2.5. Layout Coordinate Mapper (`layout_mapper.py`)
+- **Nhiệm vụ:**
+  - Ánh xạ từng bản dịch tiếng Việt vào đúng bản ghi `ocr_blocks` trong SQLite.
+  - Cung cấp dữ liệu hoàn chỉnh qua endpoint `GET /api/v1/sessions/{session_id}/canvas-data` bao gồm kích thước chuẩn của từng trang (`width_pt`, `height_pt`, `page_image_url`) và danh sách các khối (`block_id`, `label`, `bbox_norm`, `original_text`, `translated_text`, `is_translatable`).
 
----
-
-## 3. Quy cách Đóng gói & Triển khai (Packaging & Deployment)
-
-1. **Chế độ Chạy Cục bộ (Local Run — Dành cho phát triển & cá nhân):**
-   ```bash
-   # Backend: Chỉ cần Python 3.11+
-   cd backend && uv run uvicorn app.main:app --port 8000 --reload
-   # Frontend: Chỉ cần Node.js
-   cd frontend && npm run dev
-   ```
-2. **Chế độ Đóng gói 1-Click Docker (Dành cho Open-Source chia sẻ cộng đồng):**
-   - File `docker-compose.yml` duy nhất đóng gói cả Web UI và API Server.
-   - Dữ liệu và tệp lưu trữ được mount vào thư mục volume cục bộ `./data:/app/storage`.
-   - Khởi động toàn bộ ứng dụng chỉ với:
-     ```bash
-     docker compose up -d
-     ```
+### 2.6. Frontend 3-Layer HTML Canvas Engine (`CanvasPaperViewer.tsx`)
+- **Nhiệm vụ:**
+  - Khởi tạo `<canvas>` cho từng trang theo đúng tỷ lệ `width_pt / height_pt` nhân với `devicePixelRatio` và mức `zoom`.
+  - **Layer 0 (Base Page):** Vẽ `page_image_url` lên toàn bộ diện tích Canvas.
+  - **Layer 1 (Smart Redaction):** Duyệt qua các khối có `is_translatable == true` và đã có `translated_text`; vẽ hình chữ nhật màu nền (`#FFFFFF`) phủ kín tọa độ `[x0 * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H]` để xóa chữ tiếng Anh gốc mà không chạm vào bất kỳ hình ảnh hay sơ đồ nào bên ngoài hộp.
+  - **Layer 2 (Translated Text & Math Rendering):**
+    - Nếu khối chỉ chứa văn bản thuần: Dùng thuật toán Binary-Search Font Auto-Scaling (tìm cỡ chữ lớn nhất từ `6px` đến `28px` sao cho sau khi bẻ dòng `word-wrap` chiều cao văn bản nằm vừa khít trong chiều cao hộp `H_box`) và vẽ trực tiếp lên Canvas.
+    - Nếu khối chứa công thức toán LaTeX (`$...$`, `$$...$$`) hoặc bảng HTML (`<table>`): Kết xuất thông qua KaTeX + SVG `foreignObject` và vẽ ảnh SVG sắc nét trực tiếp vào đúng tọa độ hộp trên Canvas.
+  - Hỗ trợ chế độ xem đối chiếu (bật/tắt Layer 1+2 để xem tức thì bản gốc tiếng Anh bên dưới hoặc xem song song 2 trang) và xuất toàn bộ các trang Canvas ra tệp PDF chất lượng cao.

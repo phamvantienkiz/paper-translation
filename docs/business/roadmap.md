@@ -2,40 +2,38 @@
 
 **Tầng tài liệu**: Business Layer  
 **Dự án**: Paper Translation  
-**Phiên bản**: 2.0 (Scaled Down & Focused)  
-**Ngày cập nhật**: 2026-10-05  
+**Phiên bản**: 3.1 (Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas Edition)  
+**Ngày cập nhật**: 2026-10-22  
 **Trạng thái**: Approved  
 
 ---
 
 ## 1. Chiến lược Phân kỳ Lộ trình
 
-Lộ trình phát triển được tinh giản thành 2 phân kỳ rõ ràng:
-
 ```mermaid
 flowchart LR
-    H1["Horizon 1: Release 1 (Personal Core MVP)<br>Công cụ dịch Web cá nhân (PDF/DOCX, Dual-pane, Xuất PDF)"] --> H2["Horizon 2: Release 2 (Open-Source Community)<br>Đóng gói Docker 1-click & Hỗ trợ Local LLM (Ollama)"]
+    H1["Horizon 1: Release 1 (v3.1 Core MVP)<br>Indra OCR + Gemini Single-Call + 3-Layer HTML Canvas & PDF Export"] --> H2["Horizon 2: Release 2 (Open-Source Community)<br>Đóng gói Docker 1-click, Chỉnh sửa trực tiếp trên Canvas & Chia sẻ Glossary"]
 ```
 
 ---
 
 ## 2. Chi tiết các Đợt phát hành
 
-### Horizon 1: Release 1 — Personal Core MVP (Công cụ dịch cá nhân)
-- **Mục tiêu:** Đáp ứng trọn vẹn nhu cầu dịch bài báo CNTT & AI của cá nhân trên giao diện Web cục bộ.
+### Horizon 1: Release 1 (v3.1) — Layout-Preserving Core MVP
+- **Mục tiêu:** Giải quyết triệt để bài toán dịch bài báo khoa học CNTT & AI giữ nguyên 100% ngữ cảnh toàn bài và diện mạo bố cục 2 cột như bản gốc.
 - **Tính năng trọng tâm:**
-  - [x] Tiếp nhận tệp đầu vào đa định dạng: **Ưu tiên tệp PDF và DOCX** (kèm hỗ trợ dán link arXiv).
-  - [x] Bóc tách cấu trúc tài liệu, bảo toàn nguyên vẹn 100% công thức toán LaTeX (`$ ... $`, `$$ ... $$`), hình ảnh và bảng biểu.
-  - [x] Dịch thuật ngữ cảnh chuyên sâu ngành Công nghệ thông tin & Trí tuệ nhân tạo (IT/AI/ML/DL).
-  - [x] Giao diện Web hiển thị bản dịch song ngữ (Dual-Pane) đối xứng, dễ dàng đối chiếu khi đọc.
-  - [x] Tải về **tệp PDF bản dịch tiếng Việt** hoàn chỉnh, giữ nguyên vẹn công thức toán học, bảng biểu và hình ảnh.
+  - [ ] Tiếp nhận tệp bài báo **PDF** từ máy tính hoặc tải tự động qua mã/liên kết **arXiv**.
+  - [ ] Tích hợp **Indra OCR (`indra_ocr` ONNX CPU)** bóc tách bố cục 2 cột, thứ tự đọc, bảng biểu HTML, công thức LaTeX và chuẩn hóa hệ tọa độ `[0.0 .. 1.0]`.
+  - [ ] Kết xuất ảnh nền trang gốc độ phân giải cao (Layer 0) và crop riêng các khối hình ảnh (`figure`) qua `PyMuPDF`.
+  - [ ] Bộ lọc thông minh giữ nguyên mục `References` + **Dịch toàn văn trong 1 lần gọi duy nhất qua Google Gemini API** (`max_tokens=65536`) kèm cơ chế Auto-Continuation bảo vệ.
+  - [ ] Giao diện **3-Layer HTML5 Canvas Viewer**: Tái hiện bài báo bản dịch tiếng Việt giống hệt bản gốc (hỗ trợ Zoom, Pan, bật/tắt đối chiếu tức thì với lớp tiếng Anh gốc).
+  - [ ] Xuất và tải về **tệp PDF bản dịch tiếng Việt** giữ nguyên vẹn bố cục gốc chỉ với 1 click.
 
 ---
 
-### Horizon 2: Release 2 — Open-Source Community (Mã nguồn mở cho cộng đồng)
-- **Mục tiêu:** Đóng gói ứng dụng để bất kỳ ai trong cộng đồng nghiên cứu cũng có thể cài đặt và sử dụng dễ dàng.
+### Horizon 2: Release 2 — Open-Source Community & Advanced Canvas Editing
+- **Mục tiêu:** Đóng gói mã nguồn mở tiện lợi và mở rộng khả năng tương tác nâng cao trên Canvas.
 - **Tính năng dự kiến:**
-  - [ ] Đóng gói Docker Compose chạy 1-click (One-command setup).
-  - [ ] Tích hợp mô hình ngôn ngữ chạy cục bộ (Local LLM via Ollama / vLLM / llama.cpp) giúp người dùng dịch hoàn toàn offline mà không cần API key trả phí.
-  - [ ] Bộ từ điển thuật ngữ CNTT & AI chuẩn hóa do cộng đồng cùng đóng góp và mở rộng.
-  - [ ] Hỗ trợ xuất thêm định dạng DOCX tiếng Việt và Markdown.
+  - [ ] Đóng gói Docker Compose chạy 1-click (tích hợp sẵn trọng số ONNX của Indra OCR).
+  - [ ] Tính năng nhấp đúp vào bất kỳ khối văn bản nào trên HTML Canvas để chỉnh sửa câu dịch tiếng Việt và tự động vẽ lại khối đó theo thời gian thực.
+  - [ ] Lớp Transparent DOM Text Overlay phía trên Canvas giúp người dùng bôi đen và copy văn bản tiếng Việt trực tiếp.

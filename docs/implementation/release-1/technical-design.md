@@ -1,147 +1,130 @@
-# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (Personal Core MVP)
+# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (v3.1)
 
 **Tầng tài liệu**: Implementation Layer  
 **Release**: release-1 (Personal Core MVP)  
-**Phiên bản**: 2.0 (Scaled Down & Focused)  
+**Phiên bản**: 3.1 (Reviewed & Hardened — Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas)  
 **Nguồn tham chiếu**: PRD [docs/implementation/release-1/prd.md](file:///E:/MyProject/paper-translation/docs/implementation/release-1/prd.md)  
 **Kiến trúc tham chiếu**: [docs/architecture/02-high-level-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/02-high-level-architecture.md) & [docs/architecture/05-data-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/05-data-architecture.md)  
-**Ngày cập nhật**: 2026-10-05  
+**Ngày cập nhật**: 2026-10-22  
 **Trạng thái**: Approved  
 
 ---
 
-## 1. Tổng quan Luồng Kỹ thuật Release 1
+## 1. Tổng quan Luồng Kỹ thuật Release 1 (v3.1)
 
-Thiết kế kỹ thuật Release 1 tập trung phục vụ trải nghiệm cá nhân mượt mà với 4 luồng tuần tự (Sequence Flows) chính:
-1. **Tiếp nhận đa định dạng:** Hỗ trợ upload tệp **PDF**, tệp **DOCX** và dán link **arXiv**.
-2. **Bóc tách & Bảo toàn:** Bóc tách văn bản, cô lập công thức toán LaTeX, trích xuất hình ảnh minh họa và bảng biểu.
-3. **Dịch thuật ngữ cảnh CNTT & AI:** Gom lô phân đoạn, gửi qua LLM và tái nạp công thức toán LaTeX.
-4. **Giao diện Web song ngữ & Tải PDF bản dịch:** Hiển thị đối xứng 2 cột trên trình duyệt và cho phép tải về tệp PDF tiếng Việt hoàn chỉnh giữ 100% LaTeX, hình, bảng.
+Thiết kế kỹ thuật v3.1 bao gồm 4 luồng xử lý chính đã được gia cố để loại bỏ mọi rủi ro lệch tọa độ, mất sơ đồ vector, lỗi hiển thị công thức LaTeX trên Canvas và chạm trần output token:
+1. **Tiếp nhận tài liệu (Ingestion):** Nhận tệp PDF hoặc tải tự động từ arXiv.
+2. **Indra OCR, Chuẩn hóa Tọa độ `[0..1]` & Kết xuất Ảnh Nền Trang (Layer 0):** Bóc tách bố cục 2 cột, chuẩn hóa tọa độ tương đối, kết xuất ảnh nền toàn trang 200 DPI và crop các khối `figure` bằng PyMuPDF.
+3. **Lọc Thông Minh & Dịch Toàn Văn 1 Lần Gọi Qua Gemini (`max_tokens=65536`):** Lọc bỏ mục `References` và `page header/footer`, đóng gói toàn văn kèm mã `[[BLK_XXXX]]`, dịch trong 1 request duy nhất kèm cơ chế Auto-Continuation Guard.
+4. **Tái Hiện 3 Lớp Trên HTML Canvas & Xuất PDF:** Vẽ Layer 0 (Base Page) $\rightarrow$ Layer 1 (Smart Redaction `#FFFFFF` trên các khối dịch) $\rightarrow$ Layer 2 (Văn bản tiếng Việt Auto-Fit + KaTeX SVG) và xuất PDF.
 
 ---
 
-## 2. Sơ đồ Tuần tự 1: Tiếp nhận Đa định dạng (PDF & DOCX & arXiv)
+## 2. Sơ đồ Tuần tự 1: Tiếp nhận PDF, Indra OCR & Chuẩn Hóa Tọa Độ
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 👤 Bạn (Cá nhân)
+    actor User as 👤 Kỹ sư / Nhà nghiên cứu
     participant Browser as 🌐 Web UI (React)
     participant API as ⚡ FastAPI Backend
+    participant Indra as ⚡ Indra OCR (ONNX CPU)
+    participant PyMuPDF as 🖼️ Page & Asset Renderer (fitz)
     participant Storage as 📁 Local Disk (storage/)
     participant DB as 🗄️ SQLite DB
 
-    alt 1. Tải lên tệp PDF hoặc DOCX (US-001 & US-002)
-        User->>Browser: Chọn tệp PDF hoặc DOCX (<= 50MB)
-        Browser->>API: POST /api/v1/ingestion/upload (Multipart FormData)
-        API->>API: Kiểm tra định dạng (MIME / Extension)
-        API->>Storage: Lưu tệp vào storage/raw/{session_id}/original.[pdf|docx]
-        API->>DB: INSERT INTO paper_sessions (source_type, status='PENDING')
-        API->>API: Kích hoạt background task: process_paper(session_id)
-        API-->>Browser: 202 Accepted (session_id, status='PENDING')
-    else 2. Nhập link arXiv (US-003)
-        User->>Browser: Dán link arXiv hoặc mã ID và bấm "Tiếp tục"
-        Browser->>API: POST /api/v1/ingestion/arxiv (arxiv_id)
-        API->>API: Gọi arXiv API tải PDF & Metadata
-        API->>Storage: Lưu tệp vào storage/raw/{session_id}/original.pdf
-        API->>DB: INSERT INTO paper_sessions (source_type='ARXIV', status='PENDING')
-        API->>API: Kích hoạt background task: process_paper(session_id)
-        API-->>Browser: 202 Accepted (session_id, metadata preview)
-    end
+    User->>Browser: Chọn tệp PDF hoặc nhập arXiv ID
+    Browser->>API: POST /api/v1/ingestion/upload (hoặc /arxiv)
+    API->>Storage: Lưu PDF gốc vào storage/raw_pdfs/{session_id}.pdf
+    API->>DB: INSERT INTO paper_sessions (id, status='PENDING')
+    API-->>Browser: 202 Accepted (session_id)
     Browser->>Browser: Mở kết nối SSE /api/v1/sessions/{session_id}/progress
+
+    API->>Indra: Chạy indra_ocr.load() -> convert(pdf_path) trong ThreadPool
+    Indra-->>API: Trả về từng trang: rotation, skew, blocks(label, box, text)
+
+    loop Từng trang PDF (page_number = 1..N)
+        API->>PyMuPDF: Mở trang PDF, lấy kích thước chuẩn (width_pt, height_pt)
+        PyMuPDF->>Storage: Kết xuất ảnh nền trang 200 DPI -> storage/pages/{session_id}/page_{n}.png
+        API->>API: Quy đổi tọa độ box pixel của Indra sang Normalized BBox [0.0 .. 1.0]
+        opt Nếu block.label == 'figure'
+            PyMuPDF->>Storage: Crop ảnh theo BBox -> storage/figures/{session_id}/page_{n}_fig_{k}.png
+        end
+    end
+
+    API->>DB: Lưu paper_pages và ocr_blocks (kèm cờ is_translatable)
 ```
 
 ---
 
-## 3. Sơ đồ Tuần tự 2: Bóc tách, Cô lập Toán học & Dịch thuật CNTT/AI
+## 3. Sơ đồ Tuần tự 2: Bộ Lọc Thông Minh & Dịch Toàn Văn Qua Gemini Single-Call
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Task as ⚙️ Async Background Task
-    participant Storage as 📁 Local Disk (storage/)
+    participant Task as ⚙️ Async Pipeline
+    participant Filter as 🔍 Smart Block Filter & Packer
+    participant Gemini as 🤖 Google Gemini API (Single-Call)
     participant DB as 🗄️ SQLite DB
     participant SSE as 📡 SSE Broadcaster
-    participant LLM as 🤖 AI Engine (Gemini / OpenAI / Ollama)
 
-    Task->>SSE: Emit event (progress=15%, "Đang bóc tách cấu trúc tài liệu...")
+    Task->>SSE: Emit event (step='TRANSLATING', progress=50%, "Đang chuẩn bị dữ liệu và dịch toàn văn qua Gemini...")
+    Task->>Filter: Đọc toàn bộ ocr_blocks theo reading_order ASC
+    Filter->>Filter: Đánh dấu is_translatable=False cho page header/footer, figure & mục References
+    Filter->>Filter: Đóng gói các khối is_translatable=True kèm thẻ [[BLK_0001]]..[[BLK_NNNN]] + IT/AI Glossary
     
-    alt Xử lý tệp PDF (US-004)
-        Task->>Storage: Đọc file PDF qua PyMuPDF
-        Task->>Task: Trích xuất các khối text blocks, cô lập $ và $$ thành <<<MATH_TOKEN_NNN>>>
-    else Xử lý tệp DOCX (US-002)
-        Task->>Storage: Đọc file DOCX qua python-docx
-        Task->>Task: Trích xuất paragraphs, bảng tables & hình ảnh InlineShapes lưu vào storage/assets/
+    Task->>Gemini: POST /v1beta/openai/chat/completions (Full-text prompt, max_tokens=65536)
+    Note over Gemini: Dịch toàn bài trong 1 lần gọi duy nhất,<br>giữ nguyên LaTeX $..$, <table> và [[BLK_XXXX]]
+    Gemini-->>Task: Trả về bản dịch tiếng Việt kèm [[BLK_XXXX]]
+
+    Task->>Task: Parse regex [[BLK_XXXX]] ánh xạ vào từng khối
+    opt Nếu bài báo cực dài (>40 trang) làm thiếu các BLK cuối (finish_reason == 'length')
+        Task->>Gemini: Gọi Auto-Continuation cho các BLK còn thiếu (giữ nguyên ngữ cảnh)
+        Gemini-->>Task: Trả về phần dịch của các BLK cuối
     end
 
-    Task->>DB: Lưu math_tokens và paper_segments
-    Task->>SSE: Emit event (progress=35%, "Đã cô lập công thức toán & hình/bảng. Bắt đầu dịch...")
-
-    Note over Task: US-005: Dịch thuật ngữ cảnh CNTT & AI theo Batch
-    loop Từng lô 5-10 phân đoạn
-        Task->>LLM: Gửi Prompt (Chỉ dẫn CNTT/AI, Content kèm <<<MATH_TOKEN>>>)
-        LLM-->>Task: Trả về văn bản dịch tiếng Việt bảo toàn token
-        Task->>Task: Tái nạp chuỗi LaTeX gốc từ math_tokens vào câu dịch
-        Task->>DB: UPDATE paper_segments SET translated_content=..., status='TRANSLATED'
-        Task->>SSE: Emit event (progress=%, "Đang dịch phân đoạn...")
-    end
-
+    Task->>DB: UPDATE ocr_blocks SET translated_text=...
     Task->>DB: UPDATE paper_sessions SET status='COMPLETED', progress_percent=100
-    Task->>SSE: Emit event (progress=100%, "Hoàn tất! Sẵn sàng đọc song ngữ.")
+    Task->>SSE: Emit event (step='COMPLETED', progress=100%, "Hoàn tất! Sẵn sàng xem trên HTML Canvas.")
 ```
 
 ---
 
-## 4. Sơ đồ Tuần tự 3: Đọc Song Ngữ trên Web UI (US-006 & US-007)
+## 4. Sơ đồ Tuần tự 3: Kết Xuất 3 Lớp Trên HTML Canvas & Xuất PDF
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 👤 Bạn
-    participant Browser as 🌐 Web UI (Dual-Pane Reader)
+    actor User as 👤 Kỹ sư / Nhà nghiên cứu
+    participant Browser as 🌐 Web UI (React)
+    participant Canvas as 🎨 3-Layer HTML Canvas Engine
     participant API as ⚡ FastAPI Backend
     participant DB as 🗄️ SQLite DB
 
-    Browser->>API: GET /api/v1/sessions/{session_id}/segments
-    API->>DB: SELECT * FROM paper_segments ORDER BY order_index ASC
-    DB-->>API: Trả về danh sách segments
-    API-->>Browser: 200 OK (Danh sách segments gốc EN & dịch VI)
-    Browser->>Browser: Render giao diện 2 cột song song + Render công thức qua KaTeX
+    Browser->>API: GET /api/v1/sessions/{session_id}/canvas-data
+    API->>DB: SELECT paper_pages & ocr_blocks WHERE session_id = ...
+    DB-->>API: Danh sách trang (page_image_url, width_pt, height_pt) & blocks (bbox_norm, translated_text)
+    API-->>Browser: 200 OK (Canvas Layout Payload)
 
-    alt Người dùng cuộn đọc (Sync Scroll)
-        User->>Browser: Cuộn cột gốc hoặc cột dịch
-        Browser->>Browser: IntersectionObserver tự động cuộn đồng bộ cột đối ứng
-    else Người dùng sửa trực tiếp phân đoạn (Inline Edit)
-        User->>Browser: Nhấp đúp vào phân đoạn tiếng Việt
-        Browser->>Browser: Hiển thị Inline Textarea Editor
-        User->>Browser: Sửa câu chữ và bấm "Lưu" (Ctrl + Enter)
-        Browser->>API: PATCH /api/v1/segments/{segment_id}
-        API->>DB: UPDATE paper_segments SET translated_content=..., is_user_edited=TRUE
-        DB-->>API: OK
-        API-->>Browser: 200 OK (Cập nhật tức thì trên Web)
+    loop Từng trang bài báo
+        Browser->>Canvas: Khởi tạo <canvas> theo tỷ lệ (width_pt x height_pt) * zoom * devicePixelRatio
+        Canvas->>Canvas: [Layer 0] Vẽ ảnh nền trang gốc (page_image_url) -> Bảo toàn 100% hình vẽ, vector TikZ, bảng
+        loop Từng khối có is_translatable == true & có translated_text
+            Canvas->>Canvas: Quy đổi bbox_norm [0..1] sang tọa độ Canvas [x, y, w, h]
+            Canvas->>Canvas: [Layer 1] Vẽ hộp trắng (#FFFFFF) phủ lên [x, y, w, h] để xóa chữ tiếng Anh gốc
+            alt Khối chứa công thức LaTeX ($..$) hoặc bảng HTML (<table>)
+                Canvas->>Canvas: [Layer 2a] Render KaTeX + HTML vào SVG foreignObject (Auto-fit font) -> Vẽ lên [x, y, w, h]
+            else Khối văn bản thuần túy
+                Canvas->>Canvas: [Layer 2b] Binary-Search Font Auto-Scaling + Word-Wrap -> Vẽ chữ tiếng Việt lên [x, y, w, h]
+            end
+        end
     end
-```
 
----
-
-## 5. Sơ đồ Tuần tự 4: Tải về Tệp PDF Bản Dịch Tiếng Việt (US-008)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as 👤 Bạn
-    participant Browser as 🌐 Web UI
-    participant API as ⚡ FastAPI Backend
-    participant DB as 🗄️ SQLite DB
-    participant Renderer as 📑 WeasyPrint Render Engine
-    participant Storage as 📁 Local Disk
-
-    User->>Browser: Bấm nút "Tải PDF bản dịch"
-    Browser->>API: GET /api/v1/export/{session_id}/pdf
-    API->>DB: Lấy tiêu đề, metadata và toàn bộ segments tiếng Việt (đã user edit nếu có)
-    API->>Renderer: Nạp dữ liệu vào HTML Academic Template (nhúng KaTeX, hình ảnh & bảng)
-    Renderer->>Renderer: Biên dịch CSS Paged Media A4 -> Sinh tệp PDF tiếng Việt chuẩn học thuật
-    Renderer->>Storage: Lưu tệp vào storage/exports/{session_id}/translated.pdf
-    API-->>Browser: 200 OK (File stream: application/pdf; filename="[Ten-Bai-Bao]-vi.pdf")
-    Browser-->>User: Tự động tải tệp PDF tiếng Việt về máy tính
+    User->>Browser: Xem bài báo: Zoom, Pan, giữ nút "Xem bản gốc" (ẩn tạm Layer 1+2) hoặc sửa khối
+    
+    opt Người dùng bấm "Xuất PDF Bản Dịch"
+        User->>Browser: Click "Xuất PDF"
+        Browser->>Canvas: Kết xuất tuần tự các trang Canvas sang tệp PDF chất lượng cao
+        Browser-->>User: Tải tệp [Ten-Bai-Bao]-vi.pdf về máy
+    end
 ```
