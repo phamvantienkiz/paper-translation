@@ -269,10 +269,10 @@ class GeminiTranslator:
                 )
             return result
 
-        # Xác định chế độ: Local model (context nhỏ 4k-8k) hoặc bài báo cực lớn -> Adaptive Batching
+        # Xác định chế độ: Local model (context nhỏ 4k-8k) -> Adaptive Batching
         total_chars = sum(len(b.original_text) for b in translatable_blocks)
         is_local = settings.is_local_provider
-        use_batching = is_local or (total_chars > 20000)  # > ~5000 tokens
+        use_batching = is_local
 
         if use_batching:
             logger.info(

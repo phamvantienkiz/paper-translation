@@ -364,7 +364,8 @@ class IngestionService:
                     db_segments = await segment_repo.get_by_session_id(session_id)
                     for idx, seg in enumerate(db_segments):
                         if idx < len(db_blocks):
-                            seg_trans = db_blocks[idx].translated_text
+                            code = db_blocks[idx].block_code
+                            seg_trans = translated_map.get(code)
                             if seg_trans:
                                 await segment_repo.update_translation(seg.id, seg_trans)
 

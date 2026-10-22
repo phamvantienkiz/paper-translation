@@ -12,6 +12,7 @@ storage/exports/*
 storage/pages/*
 storage/figures/*
 storage/raw_pdfs/*
+storage/models/*
 !storage/raw/.gitkeep
 !storage/assets/.gitkeep
 !storage/exports/.gitkeep

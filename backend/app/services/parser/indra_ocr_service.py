@@ -82,11 +82,20 @@ class IndraOcrService:
             try:
                 import indra_ocr
 
-                # Chỉ tải mô hình nếu biến môi trường hoặc thư mục đã được cấu hình hợp lệ
-                self._converter = indra_ocr.load(
-                    threads=self.threads, math=True, mode="auto"
-                )
-                logger.info("Khởi tạo thành công Indra OCR Converter với 4 threads.")
+                # Đảm bảo tương thích Windows encoding (UTF-8) khi nạp mô hình toán
+                try:
+                    self._converter = indra_ocr.load(
+                        threads=self.threads, math=True, mode="auto"
+                    )
+                    logger.info("Khởi tạo thành công Indra OCR Converter với 4 threads (Math LaTeX enabled).")
+                except Exception as math_err:
+                    logger.warning(
+                        f"Không thể kích hoạt module Math của Indra OCR ({math_err}). Tự động nạp Indra OCR chế độ chuẩn..."
+                    )
+                    self._converter = indra_ocr.load(
+                        threads=self.threads, math=False, mode="auto"
+                    )
+                    logger.info("Khởi tạo thành công Indra OCR Converter với 4 threads (Standard mode).")
             except Exception as e:
                 logger.warning(
                     f"Không thể khởi tạo mô hình Indra OCR ({e}). Sử dụng PyMuPDF layout fallback."
