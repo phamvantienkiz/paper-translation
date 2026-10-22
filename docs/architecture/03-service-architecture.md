@@ -84,32 +84,36 @@ flowchart LR
     - Quy đổi mọi tọa độ hộp từ pixel của ảnh OCR sang hệ tọa độ tỷ lệ tương đối `[x0_norm, y0_norm, x1_norm, y1_norm]` nằm trong đoạn `[0.0, 1.0]` theo chiều rộng và chiều cao trang:
       $$x_{\text{norm}} = \frac{x_{\text{px}}}{W_{\text{ocr}}}, \quad y_{\text{norm}} = \frac{y_{\text{px}}}{H_{\text{ocr}}}$$
     - Nhờ hệ tọa độ `[0.0 .. 1.0]`, mọi sai lệch về DPI giữa Indra OCR, PyMuPDF (72 DPI) và HTML Canvas đều được loại bỏ hoàn toàn.
+  - **Thu Hồi Tài Nguyên Phần Cứng Triệt Để (`unload()`):**
+    - Phương thức `unload()` gọi `pool.shutdown(wait=False, cancel_futures=True)` dừng ngay lập tức các luồng worker threads của ONNX Runtime nhằm tránh chiếm dụng CPU.
+    - Hủy tham chiếu tất cả `InferenceSession` (`det`, `rec`, `order`, `orient`, `mask`, `math`) và kích hoạt `gc.collect()` để giải phóng hoàn toàn bộ nhớ RAM.
+    - Hỗ trợ Context Manager (`with IndraOcrService() as svc`) và tự động thực thi trong khối `finally:` của tiến trình nền.
 
 ### 2.3. Page Snapshot & Figure Extractor Service (`page_asset_service.py`)
 - **Nhiệm vụ:**
   - Dùng `PyMuPDF (fitz)` kết xuất từng trang PDF gốc thành ảnh nền độ phân giải cao (`storage/pages/{session_id}/page_{page_num}.png` ở 200 DPI) làm **Layer 0** cho HTML Canvas.
   - Việc có sẵn ảnh nền trang gốc (Layer 0) đảm bảo **100% sơ đồ vector (TikZ/PGFPlots), biểu đồ, đường viền bảng và công thức toán học độc lập** luôn hiển thị nguyên vẹn trên Canvas ngay cả khi OCR không đóng khung riêng cho hình vẽ.
   - Đồng thời, với các khối được đánh nhãn `figure` / `picture`, hệ thống hỗ trợ crop riêng thành `storage/figures/{session_id}/page_{p}_fig_{idx}.png` để phục vụ xem chi tiết.
+  - Tự động đóng tài liệu `doc.close()`, xóa bộ nhớ ảnh raster `del pix` và thu gom rác sau khi kết xuất để tối ưu RAM.
 
-### 2.4. Gemini Full-Text Translator (`gemini_translator.py`)
+### 2.4. Universal Translator & Gemini Full-Text Engine (`gemini_translator.py`)
 - **Nhiệm vụ:**
+  - **Chuẩn Hóa Giao Thức OpenAI-Compatible (/v1/chat/completions):**
+    - Hỗ trợ toàn diện Google Gemini (`gemini-3.5-flash-lite`), OpenAI ChatGPT (`gpt-4o-mini`), và các mô hình cục bộ / tự host (**Ollama**, **LM Studio**, **Llama.cpp**, **vLLM**, self-hosted translation models).
+    - Tự động nhận diện và chuẩn hóa URL endpoint (`normalized_llm_endpoint`).
   - **Bước 1 — Bộ lọc Khối Cần Dịch (Smart Translatable Filter):**
     - Đánh dấu `is_translatable = False` đối với:
       1. Các khối `page header`, `page footer` (số trang, tên hội nghị ở lề trang).
       2. Các khối thuộc mục **References / Bibliography** (bắt đầu từ tiêu đề `References` hoặc `Bibliography` ở cuối bài báo) — vì tài liệu tham khảo quốc tế cần giữ nguyên tên tiếng Anh để tra cứu và chiếm tới 20–30% độ dài bài báo.
       3. Các khối chỉ chứa ký hiệu toán học thuần túy hoặc số liệu.
-  - **Bước 2 — Đóng gói Toàn văn & Gọi Gemini Single-Call:**
-    - Gom tất cả các khối `is_translatable = True` của toàn bộ bài báo thành một chuỗi văn bản có cấu trúc:
-      ```text
-      [[BLOCK_ID_0001]]
-      Attention Is All You Need
-      [[BLOCK_ID_0002]]
-      The dominant sequence transduction models are based on complex recurrent or convolutional neural networks...
-      ```
-    - Gửi trong **1 request duy nhất** tới Google Gemini API (mặc định model `gemini-3.5-flash-lite`) với tham số `max_tokens: 65536` và bộ từ điển chuyên ngành `IT_AI_GLOSSARY`.
-  - **Bước 3 — Kiểm tra Toàn vẹn & Auto-Continuation Guard:**
-    - Bóc tách kết quả dịch theo regex `\[\[BLOCK_ID_(\d{4})\]\]`.
-    - Nếu bài báo cực dài (> 40 trang) khiến phản hồi chạm trần `finish_reason == "length"` hoặc còn thiếu một số `block_id` cuối, dịch vụ tự động gửi 1 lệnh tiếp nối (continuation call) chỉ chứa các `block_id` còn thiếu kèm ngữ cảnh tóm tắt, đảm bảo 100% khối văn bản đều được dịch đầy đủ.
+  - **Bước 2 — Điều Phối Kênh Dịch (Single-Call vs. Adaptive Batching):**
+    - **Single-Call Toàn văn (Cloud Models - Gemini 1M Context):** Đóng gói toàn bộ các khối `is_translatable = True` dạng `[[BLK_0001]]`..`[[BLK_NNNN]]` và gửi trong 1 request duy nhất với `max_tokens = 65536`.
+    - **Adaptive Batching (Local Models - Ollama, LM Studio, Llama.cpp):** Tự động phân tách danh sách khối thành các lô nhỏ (~1,500 tokens / 8 khối mỗi batch) để thích ứng hoàn hảo với các mô hình local có Context Window nhỏ (4k–8k tokens) mà không bị lỗi tràn VRAM (OOM).
+  - **Bước 3 — Cơ Chế Callback Thời Gian Thực & Xử Lý Sự Cố (Retries & Backoff):**
+    - Hỗ trợ `ProgressCallback` cập nhật tiến trình liên tục tới kênh SSE `broadcaster.emit`.
+    - Cơ chế **Exponential Backoff**: Tự động thử lại khi gặp HTTP 429 Rate Limit (tôn trọng header `Retry-After`), lỗi máy chủ HTTP 5xx, hoặc lỗi mạng/timeout.
+    - Cơ chế **Auto-Continuation Guard**: Tiếp nối tự động cho các khối còn thiếu nếu gặp `finish_reason == "length"`.
+    - Fallback an toàn sang `MockTranslator` nếu mọi nỗ lực kết nối mạng đều thất bại.
 
 ### 2.5. Layout Coordinate Mapper (`layout_mapper.py`)
 - **Nhiệm vụ:**

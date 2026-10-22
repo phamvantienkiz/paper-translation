@@ -109,16 +109,25 @@ data: {"session_id":"3fa85f64-5717-4562-b3fc-2c963f66afa6","step":"COMPLETED","p
 
 ---
 
-## 4. Chuẩn Hóa Giao Thức Gọi Google Gemini Single-Call
+## 4. Chuẩn Hóa Giao Thức Gọi LLM OpenAI-Compatible (Cloud & Local)
 
-Để đảm bảo 100% bài báo được dịch trọn vẹn trong 1 lần gọi mà không bị cắt cụt:
-1. **Endpoint chuẩn OpenAI-Compatible của Google Gemini:**
-   - `LLM_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"`
-   - Hỗ trợ tự động chuẩn hóa URL nếu người dùng dán nhầm native URL (`:generateContent`).
-2. **Mô hình và Tham số Bắt buộc:**
-   - Model mặc định của dự án: **`gemini-3.5-flash-lite`** (1M Input Context Window, tốc độ siêu nhanh, chi phí cực rẻ).
-   - Output Token Limit: Thiết lập tường minh `max_tokens: 65536` trong payload JSON gửi đi.
-3. **Cơ chế Bảo toàn Định danh Khối (`[[BLK_XXXX]]`):**
-   - Mỗi khối văn bản cần dịch được đóng gói với thẻ mở `[[BLK_XXXX]]`.
-   - Prompt hệ thống yêu cầu giữ nguyên 100% các thẻ `[[BLK_XXXX]]`, giữ nguyên biểu thức toán học `$...$`, `$$...$$` và thẻ bảng `<table>...</table>`.
-   - Nếu phản hồi trả về có `finish_reason == "length"` hoặc thiếu các khối cuối (trường hợp bài báo dài $> 40$ trang), hệ thống tự động gọi lệnh tiếp nối (Auto-Continuation) cho các khối còn lại.
+Hệ thống chuẩn hóa toàn bộ các kết nối mô hình ngôn ngữ lớn theo chuẩn **OpenAI Chat Completions (`/v1/chat/completions`)**:
+
+1. **Endpoint Đa Nền Tảng & Tự Động Chuẩn Hóa (`normalized_llm_endpoint`):**
+   - **Google Gemini**: `https://generativelanguage.googleapis.com/v1beta/openai` (Tự động chuyển đổi nếu người dùng nhập native URL `:generateContent`).
+   - **OpenAI**: `https://api.openai.com/v1`
+   - **Ollama**: `http://localhost:11434/v1` (Tự động bù `/v1` nếu người dùng chỉ nhập port `11434`).
+   - **LM Studio**: `http://localhost:1234/v1` (Tự động bù `/v1` nếu người dùng chỉ nhập port `1234`).
+   - **Llama.cpp**: `http://localhost:8080/v1` (Tự động bù `/v1` nếu người dùng chỉ nhập port `8080`).
+   - **Model Dịch Tự Host**: Hỗ trợ bất kỳ endpoint nào triển khai chuẩn `/v1/chat/completions` (vLLM, FastChat, TGI, LocalAI).
+
+2. **Chiến Lược Dịch Thích Ứng (Single-Call vs. Adaptive Batching):**
+   - **Cloud Models (Gemini 1M Context Window):** Gửi toàn bộ các khối `is_translatable = True` trong **1 lần gọi duy nhất** với `max_tokens: 65536`.
+   - **Local Models (Context Window 4k–8k Tokens):** Tự động gom khối thành các lô nhỏ (~1,500 tokens / 8 khối mỗi batch) để dịch tuần tự, chống tràn VRAM và lỗi HTTP 400 Context Limit.
+
+3. **Cơ Chế Callback & Xử Lý Sự Cố Khi Gọi API:**
+   - **ProgressCallback**: Liên tục phát sự kiện cập nhật tiến độ phần trăm và thông báo chi tiết đến người dùng qua kênh Server-Sent Events (`GET /api/v1/sessions/{id}/progress`).
+   - **Retries & Exponential Backoff**: Tự động thử lại khi gặp HTTP 429 Rate Limit (tôn trọng header `Retry-After`), HTTP 5xx Server Error, hoặc lỗi gián đoạn mạng/timeout (`httpx.NetworkError`).
+   - **Cơ chế Bảo toàn Định danh Khối (`[[BLK_XXXX]]`):** Yêu cầu mô hình giữ nguyên 100% các thẻ `[[BLK_XXXX]]`, công thức toán LaTeX `$..$` và thẻ bảng `<table>`.
+   - **Auto-Continuation Guard:** Tự động gọi tiếp nối cho các khối còn thiếu nếu gặp `finish_reason == "length"` hoặc bài báo quá dài (> 40 trang).
+   - **Safe Fallback:** Tự động fallback sang `MockTranslator` nếu mạng mất kết nối hoặc hết số lần thử lại, tránh làm crash pipeline nền.
