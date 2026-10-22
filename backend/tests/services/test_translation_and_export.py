@@ -45,6 +45,14 @@ async def test_openai_compatible_translator_endpoint_and_fallback():
     )
     assert translator.endpoint == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 
+    # Kiểm tra tự động chuẩn hóa nếu người dùng dán nhầm URL endpoint native Gemini
+    malformed_translator = OpenAICompatibleTranslator(
+        api_base="https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        api_key="dummy_key",
+        model="gemini-3.5-flash-lite",
+    )
+    assert malformed_translator.endpoint == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+
     # Khi dummy_key gặp lỗi kết nối hoặc HTTP error, tự động fallback sang MockTranslator an toàn
     result = await translator.translate_text("Introduction to Transformer architecture.")
     assert "Giới thiệu" in result or "Transformer" in result

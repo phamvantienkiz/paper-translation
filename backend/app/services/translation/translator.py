@@ -89,6 +89,16 @@ class OpenAICompatibleTranslator(BaseTranslator):
         self.timeout = timeout
 
         clean_base = self.api_base.rstrip("/")
+
+        # Tự động chuẩn hóa nếu người dùng dán URL Google Gemini không đúng định dạng OpenAI-compatible
+        if "generativelanguage.googleapis.com" in clean_base:
+            if not clean_base.endswith("/openai") and not clean_base.endswith("/openai/chat/completions"):
+                logger.warning(
+                    f"Cấu hình LLM_API_BASE '{clean_base}' của Google Gemini chưa đúng chuẩn OpenAI-Compatible. "
+                    "Tự động chuẩn hóa về 'https://generativelanguage.googleapis.com/v1beta/openai'."
+                )
+                clean_base = "https://generativelanguage.googleapis.com/v1beta/openai"
+
         if clean_base.endswith("/chat/completions"):
             self.endpoint = clean_base
         else:
