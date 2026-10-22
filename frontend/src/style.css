@@ -4,7 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbars and reader styles */
+/* 3-Tier Design System Variables (Swiss Modernism 2.0 / Scholarly Research) */
+:root {
+  /* Primitive Tokens */
+  --primitive-navy-900: #0f1c2e;
+  --primitive-navy-800: #14273e;
+  --primitive-navy-700: #1e3a5f;
+  --primitive-navy-600: #2b4c77;
+  --primitive-gold-700: #92400e;
+  --primitive-gold-600: #b45309;
+  --primitive-gold-100: #fef3c7;
+  --primitive-slate-900: #0f172a;
+  --primitive-slate-700: #334155;
+  --primitive-slate-500: #64748b;
+  --primitive-slate-200: #e2e8f0;
+  --primitive-slate-100: #f1f5f9;
+  --primitive-white: #ffffff;
+
+  /* Semantic Tokens */
+  --color-primary: var(--primitive-navy-700);
+  --color-primary-hover: var(--primitive-navy-800);
+  --color-accent: var(--primitive-gold-600);
+  --color-accent-hover: var(--primitive-gold-700);
+  --color-bg-app: var(--primitive-slate-100);
+  --color-bg-paper: var(--primitive-white);
+  --color-border-subtle: var(--primitive-slate-200);
+  --color-text-main: var(--primitive-slate-900);
+  --color-text-muted: var(--primitive-slate-500);
+
+  /* Component Tokens */
+  --canvas-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -23,6 +55,7 @@
   background: #94a3b8;
 }
 
+/* Math typesetting */
 .math-inline {
   display: inline-block;
   padding: 0 2px;
@@ -36,4 +69,20 @@
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0.5rem 0;
+}
+
+/* Canvas Paper Stage Backdrop */
+.canvas-stage-grid {
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(#cbd5e1 0.75px, transparent 0.75px),
+    radial-gradient(#cbd5e1 0.75px, #f1f5f9 0.75px);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+}
+
+/* Focus visibility for accessibility */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid #1e3a5f;
+  outline-offset: 2px;
 }

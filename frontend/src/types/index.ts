@@ -39,6 +39,42 @@ export interface Session {
 export interface ProgressEvent {
   status: SessionStatus;
   progress_percent: number;
+  stage?: string;
   message?: string;
   error?: string;
+  total_segments?: number;
+  completed_segments?: number;
 }
+
+// 3-Layer Canvas Architecture Types (v3.1)
+export interface CanvasBlock {
+  id: string;
+  block_code: string;
+  reading_order: number;
+  label: string;
+  bbox_norm: [number, number, number, number]; // [x0, y0, x1, y1] normalized to [0.0, 1.0]
+  is_translatable: boolean;
+  original_text: string;
+  translated_text: string | null;
+  figure_image_url: string | null;
+  is_user_edited: boolean;
+}
+
+export interface CanvasPage {
+  page_number: number;
+  width_pt: number;
+  height_pt: number;
+  page_image_url: string;
+  blocks: CanvasBlock[];
+}
+
+export interface CanvasData {
+  session_id: string;
+  title: string | null;
+  total_pages: number;
+  pages: CanvasPage[];
+}
+
+export type ViewMode = 'TRANSLATED' | 'ORIGINAL' | 'SIDE_BY_SIDE';
+export type DisplayMode = 'CANVAS' | 'DUAL_PANE';
+

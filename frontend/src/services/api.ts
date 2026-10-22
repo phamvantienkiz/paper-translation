@@ -1,4 +1,4 @@
-import { Session, Segment, MathToken } from '../types';
+import { Session, Segment, MathToken, CanvasData, CanvasBlock } from '../types';
 
 const API_BASE = '/api/v1';
 
@@ -31,6 +31,27 @@ export const api = {
     return json.data || [];
   },
 
+  async getCanvasData(sessionId: string): Promise<CanvasData> {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/canvas-data`);
+    if (!res.ok) throw new Error('Không thể tải dữ liệu Canvas bài báo');
+    const json = await res.json();
+    return json.data;
+  },
+
+  async updateBlockTranslation(blockId: string, translatedText: string): Promise<CanvasBlock> {
+    const res = await fetch(`${API_BASE}/blocks/${blockId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ translated_text: translatedText }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Không thể cập nhật khối bản dịch' }));
+      throw new Error(err.detail || 'Không thể cập nhật khối bản dịch');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
   async updateSegment(segmentId: string, translatedContent: string): Promise<Segment> {
     const res = await fetch(`${API_BASE}/segments/${segmentId}`, {
       method: 'PATCH',
@@ -56,7 +77,7 @@ export const api = {
   },
 
   getExportPdfUrl(sessionId: string): string {
-    return `${API_BASE}/sessions/${sessionId}/export/pdf`;
+    return `${API_BASE}/export/${sessionId}/pdf`;
   },
 
   async uploadFile(file: File): Promise<{ session_id: string; file_name: string; source_type: string; status: string }> {
@@ -96,14 +117,23 @@ export const api = {
   subscribeProgress(sessionId: string, onMessage: (data: any) => void, onError?: () => void): () => void {
     const eventSource = new EventSource(`${API_BASE}/sessions/${sessionId}/progress`);
 
-    eventSource.onmessage = (event) => {
+    const handleEvent = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
+        // Tương thích ngược: nếu backend gửi step thay vì status
+        if (!data.status && data.step) {
+          data.status = data.step;
+        }
         onMessage(data);
       } catch (err) {
         console.error('Failed to parse SSE event data', err);
       }
     };
+
+    eventSource.onmessage = handleEvent;
+    eventSource.addEventListener('progress_update', handleEvent as EventListener);
+    eventSource.addEventListener('completed', handleEvent as EventListener);
+    eventSource.addEventListener('error', handleEvent as EventListener);
 
     eventSource.onerror = (err) => {
       console.warn('SSE connection error or closed', err);
@@ -112,6 +142,9 @@ export const api = {
     };
 
     return () => {
+      eventSource.removeEventListener('progress_update', handleEvent as EventListener);
+      eventSource.removeEventListener('completed', handleEvent as EventListener);
+      eventSource.removeEventListener('error', handleEvent as EventListener);
       eventSource.close();
     };
   },

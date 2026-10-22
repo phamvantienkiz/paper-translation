@@ -77,12 +77,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Nạp bài báo khoa học</h2>
-            <p className="text-xs text-slate-500">Tối ưu cho văn bản công nghệ thông tin & trí tuệ nhân tạo</p>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Nạp bài báo khoa học</h2>
+            <p className="text-xs text-slate-500">Tối ưu cho văn bản công nghệ thông tin & trí tuệ nhân tạo (LaTeX & Bố cục 2 cột)</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Đóng"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,9 +94,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
           <button
             type="button"
             onClick={() => { setActiveTab('file'); setErrorMessage(null); }}
-            className={`pb-3 px-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'file'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-academic-navy text-academic-navy'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -105,9 +106,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
           <button
             type="button"
             onClick={() => { setActiveTab('arxiv'); setErrorMessage(null); }}
-            className={`pb-3 px-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${
+            className={`pb-3 px-3 text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'arxiv'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-academic-navy text-academic-navy'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -139,18 +140,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
                   selectedFile
-                    ? 'border-indigo-500 bg-indigo-50/30'
-                    : 'border-slate-300 hover:border-indigo-400 bg-slate-50/50 hover:bg-slate-50'
+                    ? 'border-academic-navy bg-blue-50/30'
+                    : 'border-slate-300 hover:border-academic-navy bg-slate-50/50 hover:bg-slate-50'
                 }`}
               >
                 {selectedFile ? (
                   <div className="flex flex-col items-center">
-                    <FileText className="w-10 h-10 text-indigo-600 mb-2" />
+                    <FileText className="w-10 h-10 text-academic-navy mb-2" />
                     <span className="text-sm font-medium text-slate-800 break-all">{selectedFile.name}</span>
                     <span className="text-xs text-slate-500 mt-1">
                       {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                     </span>
-                    <span className="text-xs text-indigo-600 font-medium mt-2 hover:underline">
+                    <span className="text-xs text-academic-navy font-semibold mt-2 hover:underline">
                       Nhấp để chọn tệp khác
                     </span>
                   </div>
@@ -165,23 +166,23 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
             </div>
           ) : (
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-slate-700">arXiv URL hoặc Paper ID</label>
+              <label className="block text-xs font-semibold text-slate-700">arXiv URL hoặc Paper ID</label>
               <input
                 type="text"
                 placeholder="Ví dụ: 1706.03762 hoặc https://arxiv.org/abs/1706.03762"
                 value={arxivInput}
                 onChange={(e) => setArxivInput(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-academic-navy focus:border-academic-navy transition-shadow font-mono"
               />
               <p className="text-xs text-slate-500">
-                Hệ thống sẽ tự động tải PDF từ kho lưu trữ mở arXiv và bóc tách cấu trúc tài liệu.
+                Hệ thống sẽ tự động tải PDF từ kho lưu trữ mở arXiv và bóc tách cấu trúc bằng Indra OCR.
               </p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Ngôn ngữ gốc</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Ngôn ngữ gốc</label>
               <select
                 disabled
                 className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 cursor-not-allowed"
@@ -190,7 +191,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Ngôn ngữ dịch</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Ngôn ngữ dịch</label>
               <select
                 disabled
                 className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 cursor-not-allowed"
@@ -204,14 +205,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onSuc
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={isSubmitting || (activeTab === 'file' && !selectedFile) || (activeTab === 'arxiv' && !arxivInput.trim())}
-              className="px-5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-sm flex items-center gap-2"
+              className="px-5 py-2 text-sm font-semibold text-white bg-academic-navy hover:bg-academic-navy-dark active:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{isSubmitting ? 'Đang nạp...' : 'Bắt đầu nạp & bóc tách'}</span>
