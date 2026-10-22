@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Cpu,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -139,6 +140,40 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDeleteSession = async (sessionId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài báo này và toàn bộ ảnh/file tạm trên máy không?')) {
+      return;
+    }
+    try {
+      await api.deleteSession(sessionId);
+      const remaining = sessions.filter((s) => s.id !== sessionId);
+      setSessions(remaining);
+      if (currentSessionId === sessionId) {
+        if (remaining.length > 0) {
+          setCurrentSessionId(remaining[0].id);
+        } else {
+          setCurrentSessionId(null);
+          setCurrentSession(null);
+          setCanvasData(null);
+          setSegments([]);
+          setMathTokens([]);
+        }
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi xóa bài báo');
+    }
+  };
+
+  const handleCleanupTemp = async () => {
+    try {
+      const count = await api.cleanupTempFiles();
+      alert(`Đã dọn sạch ${count} file tạm trong backend/storage/temp/.`);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi dọn dẹp file tạm');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 text-slate-800 font-sans">
       {/* Top Navbar */}
@@ -209,45 +244,64 @@ export const App: React.FC = () => {
 
             {isSessionDropdownOpen && (
               <div className="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in duration-100">
-                <div className="px-3.5 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Bài báo gần đây ({sessions.length})
+                <div className="px-3.5 py-1.5 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Bài báo gần đây ({sessions.length})
+                  </span>
+                  <button
+                    onClick={handleCleanupTemp}
+                    className="text-[10px] text-slate-500 hover:text-rose-600 font-medium transition-colors"
+                    title="Xóa toàn bộ file tạm sinh ra trong backend/storage/temp/"
+                  >
+                    Dọn rác tạm
+                  </button>
                 </div>
                 <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                   {sessions.length === 0 ? (
                     <div className="px-4 py-3 text-xs text-slate-400 text-center">Chưa có bài báo nào</div>
                   ) : (
                     sessions.map((s) => (
-                      <button
+                      <div
                         key={s.id}
                         onClick={() => {
                           setCurrentSessionId(s.id);
                           setIsSessionDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 hover:bg-slate-50 text-xs transition-colors flex flex-col gap-0.5 cursor-pointer ${
+                        className={`w-full text-left px-3.5 py-2.5 hover:bg-slate-50 text-xs transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                           s.id === currentSessionId
                             ? 'bg-blue-50/80 font-bold text-academic-navy'
                             : 'text-slate-700'
                         }`}
                       >
-                        <span className="truncate font-semibold">{s.title || s.file_name}</span>
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                          <span>{s.source_type}</span>
-                          <span>•</span>
-                          <span
-                            className={
-                              s.status === 'COMPLETED'
-                                ? 'text-emerald-600 font-semibold'
-                                : s.status === 'TRANSLATING'
-                                ? 'text-blue-600 font-semibold'
-                                : ''
-                            }
-                          >
-                            {s.status}
-                          </span>
-                          <span>•</span>
-                          <span>{new Date(s.created_at).toLocaleDateString()}</span>
+                        <div className="flex flex-col gap-0.5 truncate flex-1 min-w-0">
+                          <span className="truncate font-semibold">{s.title || s.file_name}</span>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                            <span>{s.source_type}</span>
+                            <span>•</span>
+                            <span
+                              className={
+                                s.status === 'COMPLETED'
+                                  ? 'text-emerald-600 font-semibold'
+                                  : s.status === 'TRANSLATING'
+                                  ? 'text-blue-600 font-semibold'
+                                  : ''
+                              }
+                            >
+                              {s.status}
+                            </span>
+                            <span>•</span>
+                            <span>{new Date(s.created_at).toLocaleDateString()}</span>
+                          </div>
                         </div>
-                      </button>
+
+                        <button
+                          onClick={(e) => handleDeleteSession(s.id, e)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                          title="Xóa bài báo và giải phóng toàn bộ file ảnh/PDF trên đĩa"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ))
                   )}
                 </div>

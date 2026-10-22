@@ -17,6 +17,25 @@ export const api = {
     return json.data;
   },
 
+  async deleteSession(id: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/sessions/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Không thể xóa phiên' }));
+      throw new Error(err.detail || 'Không thể xóa phiên');
+    }
+  },
+
+  async cleanupTempFiles(): Promise<number> {
+    const res = await fetch(`${API_BASE}/sessions/cleanup-temp`, {
+      method: 'POST',
+    });
+    if (!res.ok) throw new Error('Không thể dọn dẹp file tạm');
+    const json = await res.json();
+    return json.data?.deleted_count || 0;
+  },
+
   async getSegments(sessionId: string): Promise<Segment[]> {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/segments`);
     if (!res.ok) throw new Error('Không thể tải các đoạn văn bản');
