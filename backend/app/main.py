@@ -13,11 +13,30 @@ from app.middlewares import register_middlewares
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Ensure directories and database tables exist
+    # Startup: Ensure directories and database tables exist inside backend/storage
     logger.info(f"Khởi động dịch vụ {settings.PROJECT_NAME}...")
+    
+    # Cô lập toàn bộ thư mục tạm và lưu trữ trong workspace backend/storage/
+    import os
+    import tempfile
+    
+    temp_dir_path = str(settings.temp_dir)
+    os.environ["TMPDIR"] = temp_dir_path
+    os.environ["TEMP"] = temp_dir_path
+    os.environ["TMP"] = temp_dir_path
+    tempfile.tempdir = temp_dir_path
+
+    # Thư mục cache model OCR nếu chạy local
+    os.environ["INDRA_OCR_MODEL_DIR"] = str(settings.models_dir)
+
     (settings.STORAGE_DIR / "raw").mkdir(parents=True, exist_ok=True)
     (settings.STORAGE_DIR / "assets").mkdir(parents=True, exist_ok=True)
     (settings.STORAGE_DIR / "exports").mkdir(parents=True, exist_ok=True)
+    (settings.STORAGE_DIR / "pages").mkdir(parents=True, exist_ok=True)
+    (settings.STORAGE_DIR / "figures").mkdir(parents=True, exist_ok=True)
+    (settings.STORAGE_DIR / "raw_pdfs").mkdir(parents=True, exist_ok=True)
+    (settings.STORAGE_DIR / "temp").mkdir(parents=True, exist_ok=True)
+    (settings.STORAGE_DIR / "models").mkdir(parents=True, exist_ok=True)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

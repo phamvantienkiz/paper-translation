@@ -73,3 +73,11 @@ class SessionRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    async def delete(self, session_id: str) -> bool:
+        session = await self.get_by_id(session_id)
+        if not session:
+            return False
+        await self.db.delete(session)
+        await self.db.commit()
+        return True

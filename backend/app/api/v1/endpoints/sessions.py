@@ -12,6 +12,7 @@ from app.repositories.session_repository import SessionRepository
 from app.schemas.segment import MathTokenResponse, SegmentResponse, SegmentUpdateRequest
 from app.schemas.session import ApiResponse, SessionDetailResponse
 from app.services.sse_broadcaster import broadcaster
+from app.services.storage_service import StorageService
 
 router = APIRouter(tags=["sessions"])
 
@@ -33,6 +34,40 @@ async def get_session_detail(session_id: str, db: AsyncSession = Depends(get_db)
     if not session:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiên bài báo.")
     return ApiResponse(success=True, data=SessionDetailResponse.model_validate(session).model_dump())
+
+
+@router.delete("/sessions/{session_id}", response_model=ApiResponse)
+async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Xóa phiên dịch và dọn sạch toàn bộ rác/file tạm liên quan:
+    ảnh render các trang, ảnh figures crop, tệp pdf tải lên và bản dịch pdf.
+    """
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_by_id(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phiên bài báo cần xóa.")
+
+    # 1. Dọn sạch toàn bộ tệp vật lý trên đĩa
+    StorageService.cleanup_session_files(session, session_id)
+
+    # 2. Xóa phiên khỏi cơ sở dữ liệu (tự động cascade xóa pages, blocks, segments, tokens)
+    await session_repo.delete(session_id)
+
+    return ApiResponse(
+        success=True,
+        message=f"Đã xóa thành công phiên {session_id} và dọn sạch toàn bộ tệp tin rác trên đĩa.",
+    )
+
+
+@router.post("/sessions/cleanup-temp", response_model=ApiResponse)
+async def cleanup_temporary_files():
+    """Dọn dẹp toàn bộ tệp tin tạm trong thư mục backend/storage/temp/."""
+    count = StorageService.cleanup_all_temp_files()
+    return ApiResponse(
+        success=True,
+        data={"deleted_count": count},
+        message=f"Đã dọn dẹp {count} tệp tin tạm thành công.",
+    )
 
 
 @router.get("/sessions/{session_id}/segments", response_model=ApiResponse)

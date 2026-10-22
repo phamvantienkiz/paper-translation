@@ -53,6 +53,18 @@ class Settings(BaseSettings):
         p.mkdir(parents=True, exist_ok=True)
         return p
 
+    @property
+    def temp_dir(self) -> Path:
+        p = self.STORAGE_DIR / "temp"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def models_dir(self) -> Path:
+        p = self.STORAGE_DIR / "models"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     MAX_UPLOAD_SIZE_BYTES: int = 52_428_800  # 50 MB
 
     # =========================================================================
