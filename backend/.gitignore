@@ -9,9 +9,15 @@ __pycache__/
 storage/raw/*
 storage/assets/*
 storage/exports/*
+storage/pages/*
+storage/figures/*
+storage/raw_pdfs/*
 !storage/raw/.gitkeep
 !storage/assets/.gitkeep
 !storage/exports/.gitkeep
+!storage/pages/.gitkeep
+!storage/figures/.gitkeep
+!storage/raw_pdfs/.gitkeep
 paper_translation.db
 paper_translation.db-wal
 paper_translation.db-shm

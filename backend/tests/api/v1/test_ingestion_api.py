@@ -1,4 +1,5 @@
 import io
+
 import fitz
 import pytest
 from docx import Document

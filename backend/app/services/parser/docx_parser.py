@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+
 import docx
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
@@ -23,8 +23,8 @@ class DocxParser(BaseDocumentParser):
         asset_dir = settings.STORAGE_DIR / "assets" / session_id
         asset_dir.mkdir(parents=True, exist_ok=True)
 
-        doc_title: Optional[str] = doc.core_properties.title or None
-        blocks: List[ParsedBlock] = []
+        doc_title: str | None = doc.core_properties.title or None
+        blocks: list[ParsedBlock] = []
         order_index = 0
         img_counter = 1
 

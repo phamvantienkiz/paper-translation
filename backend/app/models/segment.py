@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -8,7 +8,7 @@ from app.db.base import Base
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PaperSegmentModel(Base):
@@ -26,11 +26,11 @@ class PaperSegmentModel(Base):
     )  # TITLE, HEADING, PARAGRAPH, TABLE, FIGURE
     
     original_content: Mapped[str] = mapped_column(Text, nullable=False)
-    translated_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    media_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    translated_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    media_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     is_user_edited: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    last_edited_at: Mapped[Optional[datetime]] = mapped_column(
+    last_edited_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     status: Mapped[str] = mapped_column(String(20), default="PENDING", nullable=False)

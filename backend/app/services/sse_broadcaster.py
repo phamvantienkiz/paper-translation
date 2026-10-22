@@ -1,7 +1,6 @@
 import asyncio
 import json
-from typing import AsyncGenerator, Dict, Set
-from app.core.logging import logger
+from collections.abc import AsyncGenerator
 
 
 class SSEBroadcaster:
@@ -9,7 +8,7 @@ class SSEBroadcaster:
 
     def __init__(self):
         # session_id -> Set of asyncio.Queue
-        self._listeners: Dict[str, Set[asyncio.Queue]] = {}
+        self._listeners: dict[str, set[asyncio.Queue]] = {}
 
     def add_listener(self, session_id: str) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue()

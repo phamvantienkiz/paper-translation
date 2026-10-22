@@ -1,8 +1,9 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
-from app.main import app
+
 from app.db.base import Base
 from app.db.session import engine
+from app.main import app
 
 
 @pytest.fixture(autouse=True)

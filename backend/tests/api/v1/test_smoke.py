@@ -1,4 +1,5 @@
 import pytest
+
 from app.services.parser.math_isolator import LaTeXIsolator
 
 

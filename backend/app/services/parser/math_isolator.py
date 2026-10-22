@@ -1,5 +1,4 @@
 import re
-from typing import Dict, List, Tuple, Union
 
 
 class LaTeXIsolator:
@@ -18,12 +17,12 @@ class LaTeXIsolator:
     @classmethod
     def isolate_formulas(
         cls, text: str, start_index: int = 1
-    ) -> Tuple[str, List[Dict[str, any]]]:
+    ) -> tuple[str, list[dict[str, any]]]:
         """
         Scans text for LaTeX formulas, replaces each with a placeholder token,
         and returns the masked text along with the list of extracted tokens.
         """
-        tokens: List[Dict[str, any]] = []
+        tokens: list[dict[str, any]] = []
         current_idx = start_index
 
         def env_replacer(match: re.Match) -> str:
@@ -72,7 +71,7 @@ class LaTeXIsolator:
         return masked, tokens
 
     @classmethod
-    def reinject_formulas(cls, text: str, token_map: Union[Dict[str, str], List[Dict[str, any]]]) -> str:
+    def reinject_formulas(cls, text: str, token_map: dict[str, str] | list[dict[str, any]]) -> str:
         """
         Replaces placeholders back with their original LaTeX formulas.
         token_map can be:

@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -41,13 +42,13 @@ def create_app() -> FastAPI:
     # 1. Đăng ký Middleware theo thứ tự chuẩn
     register_middlewares(app)
 
-    # 2. Phục vụ tệp hình ảnh trích xuất
+    # 2. Đăng ký Router chính (ưu tiên khớp các endpoints cụ thể trước như /api/v1/assets/pages, /api/v1/assets/figures)
+    app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    # 3. Phục vụ tệp tĩnh (hình ảnh crop/trích xuất legacy)
     assets_dir = settings.STORAGE_DIR / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/api/v1/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-
-    # 3. Đăng ký Router chính
-    app.include_router(api_router, prefix=settings.API_V1_STR)
 
     return app
 

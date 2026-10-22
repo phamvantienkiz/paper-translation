@@ -1,8 +1,10 @@
-from typing import Optional, Sequence
+from collections.abc import Sequence
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.page import PaperPageModel
 from app.models.session import PaperSessionModel
 
 
@@ -17,19 +19,28 @@ class SessionRepository:
         await self.db.refresh(session)
         return session
 
-    async def get_by_id(self, session_id: str, include_segments: bool = False) -> Optional[PaperSessionModel]:
+    async def get_by_id(
+        self,
+        session_id: str,
+        include_segments: bool = False,
+        include_canvas_data: bool = False,
+    ) -> PaperSessionModel | None:
         stmt = select(PaperSessionModel).where(PaperSessionModel.id == session_id)
         if include_segments:
             stmt = stmt.options(
                 selectinload(PaperSessionModel.segments),
                 selectinload(PaperSessionModel.math_tokens),
             )
+        if include_canvas_data:
+            stmt = stmt.options(
+                selectinload(PaperSessionModel.pages).selectinload(PaperPageModel.blocks),
+            )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def update_status(
-        self, session_id: str, status: str, progress_percent: Optional[int] = None
-    ) -> Optional[PaperSessionModel]:
+        self, session_id: str, status: str, progress_percent: int | None = None
+    ) -> PaperSessionModel | None:
         session = await self.get_by_id(session_id)
         if session:
             session.status = status
@@ -40,8 +51,8 @@ class SessionRepository:
         return session
 
     async def update_metadata(
-        self, session_id: str, title: Optional[str], authors: Optional[str], abstract: Optional[str]
-    ) -> Optional[PaperSessionModel]:
+        self, session_id: str, title: str | None, authors: str | None, abstract: str | None
+    ) -> PaperSessionModel | None:
         session = await self.get_by_id(session_id)
         if session:
             if title:

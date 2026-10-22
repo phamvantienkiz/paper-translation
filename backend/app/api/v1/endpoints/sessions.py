@@ -1,16 +1,17 @@
 from pathlib import Path
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+from app.models.math_token import MathTokenModel
 from app.repositories.segment_repository import SegmentRepository
 from app.repositories.session_repository import SessionRepository
 from app.schemas.segment import MathTokenResponse, SegmentResponse, SegmentUpdateRequest
 from app.schemas.session import ApiResponse, SessionDetailResponse
 from app.services.sse_broadcaster import broadcaster
-from app.models.math_token import MathTokenModel
-from sqlalchemy import select
 
 router = APIRouter(tags=["sessions"])
 

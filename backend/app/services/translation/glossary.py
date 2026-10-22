@@ -1,7 +1,6 @@
-from typing import Dict
 
 # Từ điển chuyên ngành Công nghệ thông tin & Trí tuệ nhân tạo (IT & AI)
-IT_AI_GLOSSARY: Dict[str, str] = {
+IT_AI_GLOSSARY: dict[str, str] = {
     "attention mechanism": "cơ chế chú ý (attention mechanism)",
     "self-attention": "tự chú ý (self-attention)",
     "multi-head attention": "chú ý đa đầu (multi-head attention)",

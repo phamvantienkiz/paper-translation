@@ -1,6 +1,6 @@
 import fitz
 import pytest
-from app.services.export.pdf_exporter import PDFExporter
+
 from app.services.parser.math_isolator import LaTeXIsolator
 from app.services.translation.translator import (
     MockTranslator,

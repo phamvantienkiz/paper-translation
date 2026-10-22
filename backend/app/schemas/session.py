@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
+
 from app.schemas.segment import SegmentResponse
 
 
@@ -19,18 +21,20 @@ class SessionDetailResponse(BaseModel):
     source_type: str
     file_name: str
     file_size_bytes: int
-    arxiv_id: Optional[str] = None
-    title: Optional[str] = None
-    authors: Optional[str] = None
-    abstract: Optional[str] = None
+    arxiv_id: str | None = None
+    title: str | None = None
+    authors: str | None = None
+    abstract: str | None = None
+    total_pages: int = 0
     status: str
     progress_percent: int
+    error_message: str | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class SessionWithSegmentsResponse(SessionDetailResponse):
-    segments: List[SegmentResponse] = []
+    segments: list[SegmentResponse] = []
 
 
 class ArxivIngestRequest(BaseModel):
@@ -39,7 +43,7 @@ class ArxivIngestRequest(BaseModel):
 
 class ApiResponse(BaseModel):
     success: bool
-    data: Optional[Any] = None
-    message: Optional[str] = None
-    error: Optional[Dict[str, Any]] = None
-    request_id: Optional[str] = None
+    data: Any | None = None
+    message: str | None = None
+    error: dict[str, Any] | None = None
+    request_id: str | None = None

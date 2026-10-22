@@ -1,10 +1,12 @@
+from pathlib import Path
+
 import fitz
 import pytest
-from pathlib import Path
 from docx import Document
-from app.services.parser.pdf_parser import PdfParser
+
 from app.services.parser.docx_parser import DocxParser
 from app.services.parser.math_isolator import LaTeXIsolator
+from app.services.parser.pdf_parser import PdfParser
 
 
 def test_pdf_parser_success(tmp_path):

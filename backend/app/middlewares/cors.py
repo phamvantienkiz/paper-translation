@@ -1,8 +1,9 @@
-from typing import Any, Dict
+from typing import Any
+
 from app.core.config import settings
 
 
-def get_cors_config() -> Dict[str, Any]:
+def get_cors_config() -> dict[str, Any]:
     return {
         "allow_origins": settings.BACKEND_CORS_ORIGINS,
         "allow_credentials": True,

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -20,10 +20,10 @@ class SegmentResponse(BaseModel):
     order_index: int
     segment_type: str
     original_content: str
-    translated_content: Optional[str] = None
-    media_path: Optional[str] = None
+    translated_content: str | None = None
+    media_path: str | None = None
     is_user_edited: bool = False
-    last_edited_at: Optional[datetime] = None
+    last_edited_at: datetime | None = None
     status: str
 
 

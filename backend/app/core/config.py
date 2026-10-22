@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "Paper Translation"
     API_V1_STR: str = "/api/v1"
-    BACKEND_CORS_ORIGINS: List[str] = [
+    BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
@@ -29,6 +29,30 @@ class Settings(BaseSettings):
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
     STORAGE_DIR: Path = Field(default_factory=lambda: Path(__file__).resolve().parent.parent.parent / "storage")
 
+    @property
+    def pages_dir(self) -> Path:
+        p = self.STORAGE_DIR / "pages"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def figures_dir(self) -> Path:
+        p = self.STORAGE_DIR / "figures"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def raw_pdfs_dir(self) -> Path:
+        p = self.STORAGE_DIR / "raw_pdfs"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def exports_dir(self) -> Path:
+        p = self.STORAGE_DIR / "exports"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     MAX_UPLOAD_SIZE_BYTES: int = 52_428_800  # 50 MB
 
     # =========================================================================
@@ -36,14 +60,19 @@ class Settings(BaseSettings):
     # Tương thích 100% với:
     # 1. Google Gemini (qua endpoint https://generativelanguage.googleapis.com/v1beta/openai)
     # 2. OpenAI ChatGPT (qua endpoint https://api.openai.com/v1)
-    # 3. Local Model (Ollama http://localhost:11434/v1 hoặc Llama.cpp http://localhost:8080/v1)
-    # 4. Các nhà cung cấp khác (Groq, DeepSeek, OpenRouter, Anthropic proxy, v.v.)
+    # 3. Local Model (Ollama, LM Studio, Llama.cpp, vLLM, LocalAI)
+    # 4. Self-hosted translation models (cung cấp giao diện chuẩn /v1/chat/completions)
     # =========================================================================
+    LLM_PROVIDER: str = "gemini"  # gemini, openai, ollama, llama_cpp, lm_studio, self_hosted, custom
     LLM_API_BASE: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gemini-3.5-flash-lite"
     LLM_TEMPERATURE: float = 0.2
     LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_MAX_RETRIES: int = 3
+    LLM_RETRY_DELAY_SECONDS: float = 2.0
+    LLM_MAX_OUTPUT_TOKENS: int = 65536
+    LLM_MAX_CONTEXT_TOKENS: int = 1_000_000
 
     # Khả năng tương thích ngược
     GEMINI_API_KEY: str = ""
@@ -53,6 +82,35 @@ class Settings(BaseSettings):
     def effective_api_key(self) -> str:
         """Lấy API key theo thứ tự ưu tiên: LLM_API_KEY > GEMINI_API_KEY > OPENAI_API_KEY."""
         return self.LLM_API_KEY or self.GEMINI_API_KEY or self.OPENAI_API_KEY
+
+    @property
+    def is_local_provider(self) -> bool:
+        """Kiểm tra xem mô hình hiện tại có phải chạy trên Local / Self-hosted không."""
+        provider = self.LLM_PROVIDER.lower()
+        if provider in ("ollama", "llama_cpp", "lm_studio", "self_hosted"):
+            return True
+        base = self.LLM_API_BASE.lower()
+        return any(h in base for h in ("localhost", "127.0.0.1", "0.0.0.0", "192.168.", "10.0."))
+
+    @property
+    def normalized_llm_endpoint(self) -> str:
+        """
+        Chuẩn hóa endpoint theo chuẩn OpenAI Chat Completions (/chat/completions).
+        Tự động nhận diện và sửa lỗi đường dẫn của Gemini, Ollama, LM Studio, Llama.cpp.
+        """
+        base = self.LLM_API_BASE.strip().rstrip("/")
+        # Tự động sửa URL của Google Gemini nếu người dùng nhập thiếu
+        if "generativelanguage.googleapis.com" in base:
+            if not base.endswith("/openai") and not base.endswith("/openai/chat/completions"):
+                base = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+        # Tự động thêm /v1 cho Ollama (11434), LM Studio (1234), Llama.cpp (8080) nếu thiếu
+        if any(port in base for port in (":11434", ":1234", ":8080")) and not base.endswith("/v1") and not base.endswith("/chat/completions"):
+            base = f"{base}/v1"
+
+        if base.endswith("/chat/completions"):
+            return base
+        return f"{base}/chat/completions"
 
 
 settings = Settings()

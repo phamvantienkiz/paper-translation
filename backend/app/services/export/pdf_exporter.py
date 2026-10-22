@@ -1,7 +1,6 @@
 import html
-import re
 from pathlib import Path
-from typing import Dict, List, Optional
+
 import pymupdf
 
 from app.core.config import settings
@@ -37,19 +36,19 @@ def markdown_table_to_html(md_table: str) -> str:
 class PDFExporter:
     """Dịch vụ xuất bản dịch bài báo ra tệp PDF chuẩn báo cáo khoa học."""
 
-    def __init__(self, export_dir: Optional[Path] = None):
+    def __init__(self, export_dir: Path | None = None):
         self.export_dir = export_dir or (settings.STORAGE_DIR / "exports")
         self.export_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_html_document(
         self,
         session: PaperSessionModel,
-        segments: List[PaperSegmentModel],
-        math_tokens: List[MathTokenModel],
+        segments: list[PaperSegmentModel],
+        math_tokens: list[MathTokenModel],
     ) -> str:
         """Tạo mã nguồn HTML hoàn chỉnh chứa đầy đủ tiêu đề, các đoạn dịch, bảng và công thức."""
         # 1. Tạo bản đồ token toán học để re-inject
-        token_map: Dict[str, str] = {t.token_placeholder: t.raw_latex for t in math_tokens}
+        token_map: dict[str, str] = {t.token_placeholder: t.raw_latex for t in math_tokens}
 
         paper_title = html.escape(session.title or session.file_name or "Bài báo khoa học")
 
@@ -223,8 +222,8 @@ class PDFExporter:
     def export_pdf(
         self,
         session: PaperSessionModel,
-        segments: List[PaperSegmentModel],
-        math_tokens: List[MathTokenModel],
+        segments: list[PaperSegmentModel],
+        math_tokens: list[MathTokenModel],
     ) -> Path:
         """Xuất tài liệu sang tệp PDF. Tự động hỗ trợ WeasyPrint kèm fallback PyMuPDF đảm bảo chạy thông suốt."""
         output_filename = f"{session.id}_translated.pdf"
@@ -250,8 +249,8 @@ class PDFExporter:
     def _export_via_pymupdf(
         self,
         session: PaperSessionModel,
-        segments: List[PaperSegmentModel],
-        math_tokens: List[MathTokenModel],
+        segments: list[PaperSegmentModel],
+        math_tokens: list[MathTokenModel],
         output_path: Path,
     ) -> Path:
         """Sinh tệp PDF bằng PyMuPDF thuần túy (không phụ thuộc external C libraries)."""
@@ -290,7 +289,6 @@ class PDFExporter:
 
             fontsize = 10
             fontname = "times-roman"
-            line_height = 14
             color = (0.1, 0.1, 0.1)
 
             if seg.segment_type in ("TITLE", "HEADING"):

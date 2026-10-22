@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional
+
 from app.core.logging import logger
 from app.db.session import AsyncSessionLocal
 from app.repositories.segment_repository import SegmentRepository
@@ -9,7 +9,7 @@ from app.services.translation.translator import BaseTranslator, TranslationFacto
 
 
 class TranslationService:
-    def __init__(self, translator: Optional[BaseTranslator] = None):
+    def __init__(self, translator: BaseTranslator | None = None):
         self.translator = translator or TranslationFactory.get_translator()
 
     async def translate_session(self, session_id: str):

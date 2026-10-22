@@ -1,7 +1,8 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Optional
+
 import httpx
+
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.translation.glossary import IT_AI_GLOSSARY, build_system_instruction
