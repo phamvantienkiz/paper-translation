@@ -20,22 +20,24 @@ Tuy nhiên, các giải pháp dịch thuật truyền thống (kể cả phiên 
 
 ---
 
-## 2. Tầm nhìn sản phẩm (Product Vision - Version 3.0)
+## 2. Tầm nhìn sản phẩm (Product Vision - Version 3.2 Local-First)
 
-Xây dựng **Paper Translation** thành công cụ dịch bài báo khoa học tinh gọn, đạt chuẩn xuất bản học thuật:
-- **Bóc tách bố cục chuẩn xác bằng Indra OCR (`datalab-to/indra`):** Nhận diện cấu trúc 2 cột, thứ tự đọc chuẩn (reading order), bảng biểu HTML và công thức toán học LaTeX.
-- **Trích xuất bảo toàn hình ảnh minh họa:** Tự động phát hiện và trích xuất nguyên vẹn các sơ đồ kiến trúc, đồ thị và hình vẽ từ PDF gốc dựa trên Bounding Box của OCR.
-- **Dịch toàn văn 1 lần gọi duy nhất (Gemini Single-Call Translation):** Tận dụng cửa sổ ngữ cảnh khổng lồ (1M–2M tokens) của Google Gemini để dịch toàn bộ bài báo trong 1 request duy nhất, loại bỏ triệt để hiện tượng mất ngữ cảnh và đảm bảo văn phong học thuật đồng nhất 100%.
-- **Tái hiện nguyên bản trên Web bằng HTML Canvas (Same-Origin Paper View):** Trực quan hóa bản dịch tiếng Việt trực tiếp lên canvas theo đúng tỷ lệ, vị trí 2 cột, khung ảnh và bảng biểu của tài liệu gốc.
+Xây dựng **Paper Translation** thành công cụ dịch bài báo khoa học tinh gọn, đạt chuẩn xuất bản học thuật với triết lý **Local-First (Ưu tiên Ngoại Tuyến & Bảo Mật Tuyệt Đối)**:
+- **Bóc tách bố cục chuẩn xác bằng Indra OCR (`datalab-to/indra`):** Nhận diện cấu trúc 2 cột, thứ tự đọc chuẩn (reading order), bảng biểu HTML và công thức toán học LaTeX trên CPU.
+- **Bảo vệ tài nguyên phần cứng tuần tự (Sequential Mutex Execution):** OCR chạy trước $\rightarrow$ Thu hồi sạch 100% tài nguyên RAM trước khi nạp LLM.
+- **Động cơ dịch thuật Local-First (`llama.cpp` + `Qwen3-1.7B-Q4_K_M.gguf`):** Hoạt động 100% ngoại tuyến, chi phí 0đ, bảo mật dữ liệu tuyệt đối. Cấu hình ngữ cảnh an toàn `n_ctx=8192` (~2.8GB RAM) và **khóa trần cứng $\le 4.0\text{ GB}$ RAM** để không gây ảnh hưởng đến hệ điều hành và các ứng dụng khác. Giữ tùy chọn Cloud Gemini Single-Call cho người dùng có nhu cầu đám mây.
+- **Minh bạch hóa động cơ trên UI:** Người dùng luôn theo dõi được trạng thái Engine đang kích hoạt (`Local LLM` hay `Cloud API`).
+- **Tái hiện nguyên bản trên Web bằng 3-Layer HTML Canvas:** Trực quan hóa bản dịch tiếng Việt trực tiếp lên canvas theo đúng tỷ lệ, vị trí 2 cột, khung ảnh và bảng biểu của tài liệu gốc.
 - **Xuất PDF 1-click chất lượng cao:** Xuất bản dịch từ HTML Canvas sang tệp PDF tiếng Việt giữ nguyên bố cục tương đương bản gốc.
 
 ---
 
 ## 3. Chỉ số thành công & KPIs (Success Metrics)
 
-| Chỉ số | Mục tiêu kỳ vọng (v3.0) | Phương pháp đo lường |
+| Chỉ số | Mục tiêu kỳ vọng (v3.2) | Phương pháp đo lường |
 |---|---|---|
-| **Tính toàn vẹn ngữ cảnh** | 100% bài báo được dịch trong **1 lần gọi AI duy nhất** | Ghi log API call (Single Prompt Request) |
+| **Giới hạn chiếm dụng RAM phần cứng** | **$\le 4.0\text{ GB}$ RAM** kịch trần (CPU Local LLM) | Task Manager / Resource Monitor APM |
+| **Tính độc lập & bảo mật dữ liệu** | 100% ngoại tuyến ở chế độ Local-First (Zero Cost) | Kiểm tra ngắt kết nối Internet vẫn dịch bình thường |
 | **Bảo toàn bố cục gốc (Layout Fidelity)** | Tái hiện đúng $\ge 95\%$ vị trí 2 cột, khối văn bản và hình vẽ trên Canvas | Đối chiếu trực quan Canvas với PDF gốc |
 | **Bảo toàn công thức LaTeX** | 100% công thức toán học không bị dịch đè hoặc sai cú pháp | Kiểm tra MathJax / KaTeX rendering |
 | **Bảo toàn hình ảnh & đồ thị** | 100% sơ đồ và hình vẽ được crop sắc nét và đặt đúng vị trí | Kiểm tra Asset Manager & Canvas Image Layer |

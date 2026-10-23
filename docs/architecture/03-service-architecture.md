@@ -29,7 +29,9 @@ flowchart LR
             IngestionSvc["1. Ingestion Service<br>(PDF Validator & arXiv Downloader)"]
             IndraOcrSvc["2. Indra OCR & Coordinate Normalizer<br>(indra_ocr ONNX + Normalized BBox [0..1])"]
             PageAssetSvc["3. Page Snapshot & Figure Extractor<br>(PyMuPDF Base Page PNG + Figure Crops)"]
-            GeminiTranslator["4. Gemini Full-Text Translator<br>(Smart Filter + Single-Call 64K + Auto-Resume)"]
+            TranslatorRouter{"4. Translation Engine Router<br>(LLM_PROVIDER: gemini / llama_cpp)"}
+            GeminiTranslator["4a. Gemini Full-Text Translator<br>(Smart Filter + Single-Call 64K + Auto-Resume)"]
+            LlamaService["4b. Local Llama.cpp Service<br>(Qwen3 GGUF + Adaptive Batching + Offline)"]
             LayoutMapper["5. Layout Coordinate Mapper<br>(Bind Translated Blocks to Normalized BBoxes)"]
             ProgressHub["6. SSE Broadcaster<br>(Real-time Phase & Progress Streaming)"]
         end
@@ -49,8 +51,11 @@ flowchart LR
 
     IngestionSvc --> IndraOcrSvc
     IndraOcrSvc --> PageAssetSvc
-    PageAssetSvc --> GeminiTranslator
+    PageAssetSvc --> TranslatorRouter
+    TranslatorRouter -->|gemini| GeminiTranslator
+    TranslatorRouter -->|llama_cpp| LlamaService
     GeminiTranslator --> LayoutMapper
+    LlamaService --> LayoutMapper
     
     IngestionSvc <--> DiskStore
     PageAssetSvc <--> DiskStore
@@ -115,12 +120,28 @@ flowchart LR
     - Cơ chế **Auto-Continuation Guard**: Tiếp nối tự động cho các khối còn thiếu nếu gặp `finish_reason == "length"`.
     - Fallback an toàn sang `MockTranslator` nếu mọi nỗ lực kết nối mạng đều thất bại.
 
-### 2.5. Layout Coordinate Mapper (`layout_mapper.py`)
+### 2.5. Local Llama.cpp Translation Service (`llama_service.py` - Local-First Core)
+- **Nhiệm vụ:**
+  - **Động Cơ Dịch Thuật Mặc Định (Local-First Architecture):**
+    - Đóng vai trò là công cụ dịch thuật mặc định ưu tiên số 1 của hệ thống, vận hành 100% ngoại tuyến (chi phí 0đ, bảo mật tuyệt đối).
+    - Tự động nạp mô hình lượng hóa `Qwen3-1.7B-Q4_K_M.gguf` từ thư mục `backend/storage/models/`.
+  - **Khóa Trần Cứng 4GB RAM (Hard 4.0GB RAM Ceiling):**
+    - Mặc định khởi tạo ngữ cảnh `n_ctx = 8192` (8K tokens) tiêu tốn ~2.8 GB RAM (1.03 GB model weights + 1.5 GB KV Cache + buffer).
+    - Thiết lập giới hạn trần cứng `max_n_ctx = 16384` (16K tokens) tiêu tốn tối đa 4.0 GB RAM. Nghiêm cấm mọi tham số vượt quá 4GB RAM để chừa tài nguyên cho hệ điều hành và các ứng dụng khác của người dùng.
+  - **Quản Lý Vòng Đời Tuần Tự (Sequential Mutex Lifecycle):**
+    - Tuân thủ quy tắc cô lập bộ nhớ tuyệt đối: Không bao giờ nạp LLM khi Indra OCR chưa giải phóng sạch.
+    - Cung cấp phương thức `unload()` tường minh để thu hồi bộ nhớ RAM/VRAM khi có tác vụ OCR mới hoặc khi kết thúc phiên.
+  - **Dịch Thuật Ngoại Tuyến Qua Phân Lô Thích Ứng (Offline Adaptive Batching):**
+    - Chia cụm 6–8 khối văn bản liên tiếp (~1,500 tokens) để suy luận cục bộ, bảo toàn trọn vẹn thẻ định danh `[[BLK_XXXX]]`, công thức toán LaTeX `$..$` và bảng HTML `<table>`.
+    - Tự động fallback dịch từng khối riêng lẻ nếu mô hình bỏ sót thẻ trong cụm batch.
+  - **Đồng Bộ Dữ Liệu:** Trả về kết quả từ điển `{block_id: translated_text}` đồng nhất với giao diện của `GeminiTranslator` để lưu vào SQLite và hiển thị trên Canvas.
+
+### 2.6. Layout Coordinate Mapper (`layout_mapper.py`)
 - **Nhiệm vụ:**
   - Ánh xạ từng bản dịch tiếng Việt vào đúng bản ghi `ocr_blocks` trong SQLite.
   - Cung cấp dữ liệu hoàn chỉnh qua endpoint `GET /api/v1/sessions/{session_id}/canvas-data` bao gồm kích thước chuẩn của từng trang (`width_pt`, `height_pt`, `page_image_url`) và danh sách các khối (`block_id`, `label`, `bbox_norm`, `original_text`, `translated_text`, `is_translatable`).
 
-### 2.6. Frontend 3-Layer HTML Canvas Engine (`CanvasPaperViewer.tsx`)
+### 2.7. Frontend 3-Layer HTML Canvas Engine (`CanvasPaperViewer.tsx`)
 - **Nhiệm vụ:**
   - Khởi tạo `<canvas>` cho từng trang theo đúng tỷ lệ `width_pt / height_pt` nhân với `devicePixelRatio` và mức `zoom`.
   - **Layer 0 (Base Page):** Vẽ `page_image_url` lên toàn bộ diện tích Canvas.

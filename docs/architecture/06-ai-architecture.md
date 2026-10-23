@@ -10,17 +10,18 @@
 
 ## 1. Mục Tiêu & Triết Lý Thiết Kế AI (AI Core Philosophy)
 
-1. **Bảo toàn Ngữ cảnh Toàn văn (Holistic Academic Context):**
-   - Loại bỏ hoàn toàn lỗi suy diễn sai đại từ tham chiếu và thuật ngữ rời rạc giữa các trang do cơ chế chia nhỏ đoạn (chunking) cổ điển.
-   - Khai thác tối đa cửa sổ ngữ cảnh 1M–2M tokens của các mô hình tiên tiến (Google Gemini) qua cơ chế dịch toàn bài một lần gọi (**Single-Call Translation**).
-2. **Chuẩn Hóa Giao Thức OpenAI-Compatible (/v1/chat/completions):**
-   - Không bị khóa chặt vào một nhà cung cấp (Zero Vendor Lock-in).
-   - Thống nhất một giao thức duy nhất cho toàn bộ hệ sinh thái: Cloud LLM (Gemini, OpenAI, DeepSeek, Groq) và Local Offline Runtimes (Ollama, LM Studio, Llama.cpp, vLLM, Self-Hosted models).
-3. **Thích Ứng Kích Thước Ngữ Cảnh (Context-Aware Adaptive Batching):**
-   - Tự động nhận diện cấu hình: Chạy Single-Call đối với Cloud Model hoặc chuyển sang **Adaptive Batching** (~1,500 tokens / 8 khối mỗi batch) đối với Local Model có VRAM / Context Window nhỏ (4k–8k tokens).
-4. **Phục Hồi Sự Cố Tự Động & Thu Hồi Tài Nguyên Phần Cứng:**
-   - Xử lý mượt mà sự cố Rate Limit (429), lỗi mạng và lỗi quá tải máy chủ (5xx) bằng cơ chế **Exponential Backoff**.
-   - Cơ chế thu hồi triệt để RAM và CPU (giải phóng toàn bộ ONNX InferenceSession và tắt ThreadPool) ngay khi hoàn thành tác vụ.
+1. **Ưu Tiên Local-First & Bảo Mật Tuyệt Đối (Local-First Priority):**
+   - Đặt động cơ dịch cục bộ (`llama.cpp` + `Qwen3-1.7B-Q4_K_M.gguf`) làm cốt lõi xử lý mặc định, bảo vệ 100% dữ liệu nghiên cứu nội bộ và vận hành hoàn toàn ngoại tuyến với chi phí 0đ.
+   - Cloud Gemini (Single-Call 1M context) đóng vai trò tùy chọn thứ hai khi người dùng cần tốc độ cực đại trên đám mây.
+2. **Khóa Trần Cứng 4.0 GB RAM Cho Phần Cứng Cá Nhân (Hard 4GB RAM Ceiling):**
+   - Bảo vệ hệ thống máy trạm cá nhân (8GB–16GB RAM) khỏi hiện tượng treo máy hoặc Out-Of-Memory.
+   - Cấu hình chuẩn ngữ cảnh: `n_ctx = 8192` (8K tokens) tiêu tốn ~2.8 GB RAM (vùng an toàn tối ưu).
+   - Thiết lập giới hạn trần cứng: `max_n_ctx = 16384` (16K tokens) tiêu tốn tối đa 4.0 GB RAM. Nghiêm cấm mọi cấu hình vượt quá 4GB RAM khi chạy trên CPU.
+3. **Bộ Điều Phối Tuần Tự Tài Nguyên Ngặt Nghèo (Sequential Mutex Scheduling):**
+   - Indra OCR (~1.5GB–2.0GB RAM) và Local LLM (~2.8GB–4.0GB RAM) tuyệt đối **không được nạp cùng lúc**.
+   - Chu trình bắt buộc: Chạy OCR $\rightarrow$ Thu hồi sạch 100% tài nguyên (`unload()`, hủy ONNX sessions, `pool.shutdown()`, `gc.collect()`) $\rightarrow$ Mới nạp Local LLM vào RAM/VRAM để suy luận.
+4. **Thích Ứng Kích Thước Ngữ Cảnh (Context-Aware Adaptive Batching):**
+   - Tự động đóng gói 6–8 khối văn bản liên tiếp (~1,500 tokens) cho Local LLM, bảo toàn mã định danh `[[BLK_XXXX]]`, công thức LaTeX và thẻ bảng biểu.
 
 ---
 
@@ -28,36 +29,35 @@
 
 ```mermaid
 flowchart TD
-    subgraph InputStage ["1. Bóc Tách Bố Cục & Chuẩn Bị Khối"]
-        PDF["Tệp PDF Bài Báo"] --> Indra["Indra OCR (ONNX CPU)"]
+    subgraph Stage1 ["1. Bóc Tách Bố Cục (Indra OCR - Phase 1)"]
+        PDF["Tệp PDF Bài Báo"] --> Indra["Indra OCR (ONNX CPU)<br>Chiếm 1.5GB-2.0GB RAM"]
         Indra --> Normalizer["Coordinate Normalizer [0..1]"]
-        Normalizer --> Filter["Smart Translatable Filter<br>(Bỏ qua References, Headers, Footers, Figures)"]
+        Normalizer --> Filter["Smart Translatable Filter"]
     end
 
-    subgraph DecisionStage ["2. Điều Phối Kênh Dịch Thuật"]
-        Filter --> Router{"Kiểm Tra Provider<br>& Độ Dài Ngữ Cảnh"}
-        Router -->|Cloud Large-Context<br>(Gemini 1M Context)| SingleCall["Single-Call toàn bài<br>(max_tokens = 65,536)"]
-        Router -->|Local Model / VRAM Nhỏ<br>(Ollama, LM Studio, Llama.cpp)| Batching["Adaptive Batching<br>(~1,500 tokens / 8 blocks per batch)"]
+    subgraph MutexStage ["2. Thu Hồi Tài Nguyên Tuần Tự (Sequential Mutex)"]
+        Filter --> OCRCleanup["IndraOcrService.unload()<br>• pool.shutdown(wait=False)<br>• del ONNX InferenceSessions<br>• gc.collect() -> RAM trở về tối thiểu"]
     end
 
-    subgraph ExecutionStage ["3. Chuẩn Hóa Giao Thức OpenAI-Compatible"]
-        SingleCall --> APIEngine["HTTP Client (httpx) -> /v1/chat/completions"]
-        Batching --> APIEngine
-        APIEngine --> IncidentGuard{"Xử Lý Sự Cố<br>(Status Code Check)"}
-        IncidentGuard -->|200 OK| Parser["Block Unpacker & Regex [[BLK_XXXX]]"]
-        IncidentGuard -->|429 Rate Limit| Backoff["Exponential Backoff (Retry-After)"]
-        IncidentGuard -->|5xx Server Error| Retry["Retry (max_retries = 3)"]
-        IncidentGuard -->|400 Context Limit| FallbackBatch["Chuyển sang Adaptive Batching"]
-        Backoff --> APIEngine
-        Retry --> APIEngine
-        FallbackBatch --> Batching
+    subgraph Stage2 ["3. Điều Phối Kênh Dịch Thuật (Local-First Default)"]
+        OCRCleanup --> Router{"Kiểm Tra Provider<br>(Mặc định: Local LLM)"}
+        Router -->|Local-First (Mặc định)<br>Qwen3-1.7B GGUF| LocalEngine["LlamaCppService (In-Process)<br>n_ctx=8192 (~2.8GB RAM) <= 4GB Trần Cứng<br>Adaptive Batching (~1,500 tokens / batch)"]
+        Router -->|Cloud Option<br>Gemini API 1M Context| CloudEngine["GeminiTranslator<br>Single-Call toàn bài (max_tokens=65536)"]
     end
 
-    subgraph OutputStage ["4. Đồng Bộ Tiến Độ & Giải Phóng Tài Nguyên"]
-        Parser --> SSE["ProgressCallback -> SSE Broadcaster (0% .. 100%)"]
+    subgraph ExecutionStage ["4. Thực Thi Suy Luận & Bóc Tách Nhãn"]
+        LocalEngine --> InferEngine["llama-cpp-python suy luận CPU đa luồng"]
+        CloudEngine --> APIEngine["HTTP Client (httpx) -> /v1/chat/completions"]
+        InferEngine --> Parser["Block Unpacker & Regex [[BLK_XXXX]]"]
+        APIEngine --> Parser
+    end
+
+    subgraph OutputStage ["5. Đồng Bộ Tiến Độ & Hiển Thị"]
+        Parser --> SSE["ProgressCallback -> SSE Broadcaster<br>(phase: ocr -> cleanup -> translating_local)"]
         SSE --> DB[(SQLite paper_pages & ocr_blocks)]
-        DB --> Cleanup["Hardware Resource Cleanup<br>(pool.shutdown + ONNX release + gc.collect)"]
+        DB --> UIIndicator["Cập nhật UI Engine Badge: 'Local LLM: Qwen3-1.7B'"]
     end
+```
 ```
 
 ---

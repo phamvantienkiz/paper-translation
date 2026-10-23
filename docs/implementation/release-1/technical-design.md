@@ -1,26 +1,27 @@
-# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (v3.1)
+# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (v3.2 Local-First)
 
 **Tầng tài liệu**: Implementation Layer  
 **Release**: release-1 (Personal Core MVP)  
-**Phiên bản**: 3.1 (Reviewed & Hardened — Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas)  
+**Phiên bản**: 3.2 (Local-First Priority, Sequential Mutex & 4GB Hard RAM Ceiling)  
 **Nguồn tham chiếu**: PRD [docs/implementation/release-1/prd.md](file:///E:/MyProject/paper-translation/docs/implementation/release-1/prd.md)  
-**Kiến trúc tham chiếu**: [docs/architecture/02-high-level-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/02-high-level-architecture.md) & [docs/architecture/05-data-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/05-data-architecture.md)  
-**Ngày cập nhật**: 2026-10-22  
+**Kiến trúc tham chiếu**: [docs/architecture/02-high-level-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/02-high-level-architecture.md), [docs/architecture/03-service-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/03-service-architecture.md), [docs/architecture/06-ai-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/06-ai-architecture.md)  
+**Ngày cập nhật**: 2026-10-23  
 **Trạng thái**: Approved  
 
 ---
 
-## 1. Tổng quan Luồng Kỹ thuật Release 1 (v3.1)
+## 1. Tổng quan Luồng Kỹ thuật Release 1 (v3.2 Local-First)
 
-Thiết kế kỹ thuật v3.1 bao gồm 4 luồng xử lý chính đã được gia cố để loại bỏ mọi rủi ro lệch tọa độ, mất sơ đồ vector, lỗi hiển thị công thức LaTeX trên Canvas và chạm trần output token:
+Thiết kế kỹ thuật v3.2 chuyển trọng tâm sang **Local-First**, bảo vệ an toàn phần cứng người dùng qua 5 luồng xử lý chính:
 1. **Tiếp nhận tài liệu (Ingestion):** Nhận tệp PDF hoặc tải tự động từ arXiv.
-2. **Indra OCR, Chuẩn hóa Tọa độ `[0..1]` & Kết xuất Ảnh Nền Trang (Layer 0):** Bóc tách bố cục 2 cột, chuẩn hóa tọa độ tương đối, kết xuất ảnh nền toàn trang 200 DPI và crop các khối `figure` bằng PyMuPDF.
-3. **Lọc Thông Minh & Dịch Toàn Văn 1 Lần Gọi Qua Gemini (`max_tokens=65536`):** Lọc bỏ mục `References` và `page header/footer`, đóng gói toàn văn kèm mã `[[BLK_XXXX]]`, dịch trong 1 request duy nhất kèm cơ chế Auto-Continuation Guard.
-4. **Tái Hiện 3 Lớp Trên HTML Canvas & Xuất PDF:** Vẽ Layer 0 (Base Page) $\rightarrow$ Layer 1 (Smart Redaction `#FFFFFF` trên các khối dịch) $\rightarrow$ Layer 2 (Văn bản tiếng Việt Auto-Fit + KaTeX SVG) và xuất PDF.
+2. **Indra OCR & Chuẩn hóa Tọa độ `[0..1]`:** Bóc tách bố cục 2 cột, chuẩn hóa tọa độ tương đối, kết xuất ảnh nền toàn trang 200 DPI và crop các khối `figure` bằng PyMuPDF.
+3. **Thu Hồi Sạch Tài Nguyên OCR (Sequential Mutex Reclamation):** Dừng ThreadPool, giải phóng toàn bộ ONNX sessions và gọi `gc.collect()` để RAM trở về mức tối thiểu trước khi nạp LLM.
+4. **Động Cơ Dịch Local-First (llama.cpp & Qwen3 GGUF với Trần Cứng $\le 4.0\text{ GB}$ RAM):** Nạp `Qwen3-1.7B-Q4_K_M.gguf` với `n_ctx=8192` (~2.8GB RAM), khóa trần $n\_ctx \le 16384$, thực thi dịch qua Adaptive Batching (~1500 tokens / batch). Cho phép tùy chọn Cloud Gemini Single-Call.
+5. **Tái Hiện 3 Lớp Trên HTML Canvas, Hiển Thị UI Engine Indicator & Xuất PDF:** Vẽ Layer 0 (Base Page) $\rightarrow$ Layer 1 (Smart Redaction `#FFFFFF`) $\rightarrow$ Layer 2 (Auto-Fit Text + KaTeX SVG), hiển thị huy hiệu trạng thái Engine trên UI và xuất PDF 1-click.
 
 ---
 
-## 2. Sơ đồ Tuần tự 1: Tiếp nhận PDF, Indra OCR & Chuẩn Hóa Tọa Độ
+## 2. Sơ đồ Tuần tự 1: Tiếp nhận PDF, Indra OCR & Thu Hồi Tài Nguyên Tuần Tự
 
 ```mermaid
 sequenceDiagram
@@ -40,7 +41,7 @@ sequenceDiagram
     API-->>Browser: 202 Accepted (session_id)
     Browser->>Browser: Mở kết nối SSE /api/v1/sessions/{session_id}/progress
 
-    API->>Indra: Chạy indra_ocr.load() -> convert(pdf_path) trong ThreadPool
+    API->>Indra: Chạy indra_ocr.load() -> convert(pdf_path) trong ThreadPool (Chiếm 1.5GB-2.0GB RAM)
     Indra-->>API: Trả về từng trang: rotation, skew, blocks(label, box, text)
 
     loop Từng trang PDF (page_number = 1..N)
@@ -53,39 +54,53 @@ sequenceDiagram
     end
 
     API->>DB: Lưu paper_pages và ocr_blocks (kèm cờ is_translatable)
+    
+    Note over API,Indra: [SEQUENTIAL MUTEX RECLAMATION]<br>Bắt buộc thu hồi 100% RAM trước khi sang bước dịch
+    API->>Indra: IndraOcrService.unload()
+    Note over Indra: pool.shutdown(wait=False)<br>del sessions (det, rec, math...)<br>gc.collect() -> RAM trở về tối thiểu
 ```
 
 ---
 
-## 3. Sơ đồ Tuần tự 2: Bộ Lọc Thông Minh & Dịch Toàn Văn Qua Gemini Single-Call
+## 3. Sơ đồ Tuần tự 2: Dịch Thuật Local-First (Llama.cpp Qwen3 $\le$ 4GB RAM) Hoặc Cloud Gemini
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Task as ⚙️ Async Pipeline
     participant Filter as 🔍 Smart Block Filter & Packer
-    participant Gemini as 🤖 Google Gemini API (Single-Call)
+    participant Llama as 🧠 LlamaCppService (Local Qwen3 GGUF)
+    participant Gemini as 🌐 Google Gemini API (Cloud Option)
     participant DB as 🗄️ SQLite DB
     participant SSE as 📡 SSE Broadcaster
 
-    Task->>SSE: Emit event (step='TRANSLATING', progress=50%, "Đang chuẩn bị dữ liệu và dịch toàn văn qua Gemini...")
     Task->>Filter: Đọc toàn bộ ocr_blocks theo reading_order ASC
     Filter->>Filter: Đánh dấu is_translatable=False cho page header/footer, figure & mục References
-    Filter->>Filter: Đóng gói các khối is_translatable=True kèm thẻ [[BLK_0001]]..[[BLK_NNNN]] + IT/AI Glossary
     
-    Task->>Gemini: POST /v1beta/openai/chat/completions (Full-text prompt, max_tokens=65536)
-    Note over Gemini: Dịch toàn bài trong 1 lần gọi duy nhất,<br>giữ nguyên LaTeX $..$, <table> và [[BLK_XXXX]]
-    Gemini-->>Task: Trả về bản dịch tiếng Việt kèm [[BLK_XXXX]]
-
-    Task->>Task: Parse regex [[BLK_XXXX]] ánh xạ vào từng khối
-    opt Nếu bài báo cực dài (>40 trang) làm thiếu các BLK cuối (finish_reason == 'length')
-        Task->>Gemini: Gọi Auto-Continuation cho các BLK còn thiếu (giữ nguyên ngữ cảnh)
-        Gemini-->>Task: Trả về phần dịch của các BLK cuối
+    alt Chế độ Mặc định: Local-First (LLM_PROVIDER="llama_cpp")
+        Task->>SSE: Emit event (phase='loading_llm', progress=40%, "Đang nạp mô hình Qwen3 GGUF...")
+        Task->>Llama: LlamaCppService.get_instance(n_ctx=8192)
+        Note over Llama: Khóa trần cứng <= 4.0GB RAM (n_ctx <= 16384)<br>Mặc định n_ctx=8192 chiếm ~2.8GB RAM
+        
+        loop Từng batch thích ứng (6-8 khối ~1500 tokens)
+            Filter->>Llama: Gửi batch kèm [[BLK_XXXX]] + IT/AI Glossary
+            Llama-->>Task: Sinh bản dịch bảo toàn [[BLK_XXXX]], LaTeX $..$, <table>
+            Task->>Task: Regex bóc tách [[BLK_XXXX]]
+            opt Nếu thiếu mã khối (Edge Case)
+                Task->>Llama: Fallback dịch đơn lẻ riêng khối bị thiếu
+            end
+            Task->>SSE: Emit event (phase='translating_local', progress=40% + N%, "Đang dịch qua Qwen3...")
+        end
+    else Chế độ Tùy chọn: Cloud Gemini (LLM_PROVIDER="gemini")
+        Task->>SSE: Emit event (phase='translating_cloud', progress=50%, "Dịch Single-Call qua Gemini...")
+        Filter->>Gemini: Single-Call 64K tokens kèm [[BLK_0001]]..[[BLK_NNNN]]
+        Gemini-->>Task: Phản hồi toàn văn bản dịch
+        Task->>Task: Regex bóc tách [[BLK_XXXX]]
     end
 
     Task->>DB: UPDATE ocr_blocks SET translated_text=...
     Task->>DB: UPDATE paper_sessions SET status='COMPLETED', progress_percent=100
-    Task->>SSE: Emit event (step='COMPLETED', progress=100%, "Hoàn tất! Sẵn sàng xem trên HTML Canvas.")
+    Task->>SSE: Emit event (phase='completed', progress=100%, "Hoàn tất! Sẵn sàng xem trên Canvas.")
 ```
 
 ---
@@ -128,3 +143,28 @@ sequenceDiagram
         Browser-->>User: Tải tệp [Ten-Bai-Bao]-vi.pdf về máy
     end
 ```
+
+---
+
+## 5. Đặc Tả Hợp Đồng API Chỉ Báo Trạng Thái Engine (UI Engine Status Contract)
+
+### 5.1. Endpoint: `GET /api/v1/system/engine-status`
+- **Mục đích:** Cung cấp thông tin thời gian thực về Engine dịch thuật đang kích hoạt và mức giới hạn tài nguyên cho Frontend hiển thị huy hiệu trên Header.
+- **Phản hồi mẫu (JSON):**
+```json
+{
+  "active_provider": "llama_cpp",
+  "is_local": true,
+  "model_name": "Qwen3-1.7B-Q4_K_M.gguf",
+  "context_window": 8192,
+  "hard_ram_ceiling_gb": 4.0,
+  "estimated_ram_usage_gb": 2.8,
+  "sequential_mutex_status": "READY",
+  "ocr_active": false
+}
+```
+
+### 5.2. Endpoint: `POST /api/v1/system/engine-switch`
+- **Mục đích:** Cho phép người dùng chuyển đổi qua lại giữa `llama_cpp` (Local-First) và `gemini` (Cloud).
+- **Yêu cầu (JSON):** `{"provider": "llama_cpp" | "gemini"}`.
+- **Cơ chế:** Khi chuyển sang `gemini`, nếu `llama_cpp` đang nạp, hệ thống kích hoạt `unload()` để trả lại RAM. Ngược lại, khi chuyển sang `llama_cpp`, kiểm tra tệp GGUF và nạp Singleton an toàn dưới 4GB RAM.
