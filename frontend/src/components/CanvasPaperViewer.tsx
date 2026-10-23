@@ -39,52 +39,69 @@ const JUNK_WATERMARK_REGEX =
   /(?:^arxiv:\d{4}\.\d+|ieee\s+transactions|cvpr|iccv|neurips|icml|conference\s+on|authorized\s+licensed\s+use|downloaded\s+on.*utc|copyright\s+©|all\s+rights\s+reserved|^\d+\s*$)/i;
 
 /**
- * Thuật toán tính cỡ chữ cân đối cho các khối văn bản (Paragraph):
- * Giới hạn trong khoảng [9.5px .. 13px] để đảm bảo luôn đọc rõ ràng, không bị co quá nhỏ.
+ * Ước lượng văn bản hiển thị thực tế (loại bỏ tên lệnh LaTeX dài như \operatorname, \mathcal)
+ * để tính toán số ký tự trên dòng chính xác khi có công thức toán học.
+ */
+function getVisualTextForSizing(text: string): string {
+  return text
+    .replace(/\\[a-zA-Z]+/g, 'M')
+    .replace(/[{}$_^]/g, '');
+}
+
+/**
+ * Thuật toán Binary-Search Font Auto-Scaling:
+ * Tìm cỡ chữ tối ưu để văn bản tiếng Việt nằm gọn trong Bounding Box gốc của khối OCR.
  */
 export function calculateOptimalFontSize(
   text: string,
   boxWidth: number,
   boxHeight: number,
-  minSize = 9.5,
-  maxSize = 13
+  minSize = 7.5,
+  maxSize = 12.5,
+  lineHeightRatio = 1.24
 ): number {
-  if (!text || boxWidth <= 0 || boxHeight <= 0) return 11;
+  if (!text || boxWidth <= 0 || boxHeight <= 0) return minSize;
+
+  const visualText = getVisualTextForSizing(text);
+  const paragraphs = visualText.split(/\n+/).filter(Boolean);
+  if (paragraphs.length === 0) return minSize;
 
   let low = minSize;
   let high = maxSize;
   let best = minSize;
 
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return minSize;
-
-  for (let iter = 0; iter < 6; iter++) {
+  for (let iter = 0; iter < 8; iter++) {
     const mid = (low + high) / 2;
-    const charWidth = mid * 0.52;
-    const lineHeight = mid * 1.35;
+    const charWidth = mid * 0.48;
+    const lineHeight = mid * lineHeightRatio;
     const maxCharsPerLine = Math.max(1, Math.floor(boxWidth / charWidth));
 
-    let lines = 1;
-    let currentLineLength = 0;
-
-    for (const w of words) {
-      if (currentLineLength === 0) {
-        currentLineLength = w.length;
-      } else if (currentLineLength + 1 + w.length <= maxCharsPerLine) {
-        currentLineLength += 1 + w.length;
-      } else {
-        lines++;
-        currentLineLength = w.length;
+    let totalLines = 0;
+    for (const para of paragraphs) {
+      const words = para.split(/\s+/).filter(Boolean);
+      if (words.length === 0) continue;
+      let lines = 1;
+      let currentLineLength = 0;
+      for (const w of words) {
+        if (currentLineLength === 0) {
+          currentLineLength = w.length;
+        } else if (currentLineLength + 1 + w.length <= maxCharsPerLine) {
+          currentLineLength += 1 + w.length;
+        } else {
+          lines++;
+          currentLineLength = w.length;
+        }
       }
+      totalLines += lines;
     }
 
-    const totalHeight = lines * lineHeight;
+    const totalHeight = totalLines * lineHeight;
 
-    if (totalHeight <= boxHeight) {
+    if (totalHeight <= boxHeight * 1.04) {
       best = mid;
-      low = mid + 0.5;
+      low = mid + 0.25;
     } else {
-      high = mid - 0.5;
+      high = mid - 0.25;
     }
   }
 
@@ -228,23 +245,95 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   };
 
   /**
-   * Render Khối Nội Dung Trên Trang Word Trắng:
-   * - Bỏ qua watermark rác.
-   * - Nhúng ảnh gốc crop cho khối figure.
-   * - Áp dụng Typography chuẩn phân cấp (Title, Section, Body, Caption).
+   * Kiểm tra một khối có phải là phương trình toán học độc lập hoặc ký hiệu đánh số phương trình (1)..(9)
+   * để giữ nguyên bản vẽ vector sắc nét từ Layer 0.
    */
-  const renderCleanWordBlock = (block: CanvasBlock, pWidth: number, pHeight: number) => {
-    const [x0, y0, x1, y1] = block.bbox_norm;
-    const label = (block.label || '').toLowerCase();
-    const rawText = block.translated_text || block.original_text || '';
+  const isPureEquationOrSymbol = (text: string): boolean => {
+    const trimmed = text.trim();
+    if (!trimmed) return true;
+    if (/^\(\d+\)$/.test(trimmed)) return true;
+    // Bỏ hết các đoạn trong $...$ hoặc $$...$$ xem còn chữ cái thông thường không
+    const withoutMath = trimmed
+      .replace(/\$\$[\s\S]*?\$\$/g, '')
+      .replace(/\$[^$]*\$/g, '')
+      .replace(/\\[a-zA-Z]+/g, '')
+      .replace(/[^a-zA-ZÀ-ỹ]/g, '');
+    return withoutMath.length < 4;
+  };
 
-    // Bỏ qua watermark rác hoặc header/footer phụ
-    if (label === 'page header' || label === 'page footer' || JUNK_WATERMARK_REGEX.test(rawText)) {
+  /**
+   * Render Lớp Phủ Dịch Thuật (Layer 1 Smart Whiteout + Layer 2 Vietnamese Text & KaTeX)
+   * trên nền ảnh gốc Layer 0 (200 DPI):
+   * - Giữ nguyên 100% hình vẽ (figure), sơ đồ vector (TikZ/diagrams), bảng số liệu (table),
+   *   phương trình độc lập, References và các nhãn con nằm đè lên vùng ảnh.
+   * - Chỉ phủ trắng (#FFFFFF) và vẽ đè văn bản tiếng Việt lên đúng tọa độ chuẩn hóa [0..1]
+   *   của các khối văn bản đã dịch.
+   */
+  const renderOverlayBlock = (
+    block: CanvasBlock,
+    page: CanvasPage,
+    pWidth: number,
+    pHeight: number
+  ) => {
+    const [x0, y0, x1, y1] = block.bbox_norm;
+    if (x1 <= x0 || y1 <= y0) return null;
+
+    const label = (block.label || '').toLowerCase();
+    const origText = (block.original_text || '').trim();
+    const transText = (block.translated_text || '').trim();
+
+    // 1. Giữ nguyên Layer 0 cho hình ảnh, bảng biểu, header/footer và khối không dịch
+    if (
+      label === 'figure' ||
+      label === 'figure_text' ||
+      label === 'table' ||
+      label === 'page header' ||
+      label === 'page footer' ||
+      !block.is_translatable
+    ) {
       return null;
     }
 
-    // 1. Khối HÌNH ẢNH (Figure): Nhúng ảnh gốc đã crop từ PDF, bỏ qua text OCR bên trong
-    if (label === 'figure' || block.figure_image_url) {
+    // 2. Bỏ qua watermark rác
+    if (origText.length < 250 && JUNK_WATERMARK_REGEX.test(origText)) {
+      return null;
+    }
+
+    // 3. Kiểm tra nếu khối văn bản ngắn nằm đè lên vùng hình vẽ (Figure Union) của trang
+    // (Trừ khi là chú thích chính bắt đầu bằng Figure / Fig. / Hình / Table / Bảng)
+    const isMainCaption = /^(?:figure|fig\.|hình|table|bảng)\s*\d+/i.test(origText) || /^(?:figure|fig\.|hình|table|bảng)\s*\d+/i.test(transText);
+    if (!isMainCaption && origText.length < 140) {
+      const figBlocks = page.blocks.filter((b) => (b.label || '').toLowerCase() === 'figure');
+      if (figBlocks.length > 0) {
+        const ux0 = Math.min(...figBlocks.map((b) => b.bbox_norm[0]));
+        const uy0 = Math.min(...figBlocks.map((b) => b.bbox_norm[1]));
+        const ux1 = Math.max(...figBlocks.map((b) => b.bbox_norm[2]));
+        const uy1 = Math.max(...figBlocks.map((b) => b.bbox_norm[3]));
+        const overlapsFigureUnion =
+          x0 < ux1 + 0.01 &&
+          x1 > ux0 - 0.01 &&
+          y0 < uy1 + 0.025 &&
+          y1 > uy0 - 0.015;
+        if (overlapsFigureUnion) {
+          return null;
+        }
+      }
+    }
+
+    // 4. Giữ nguyên Layer 0 cho phương trình toán học độc lập hoặc khối không thay đổi nội dung (tên tác giả, affiliation...)
+    const hasDistinctTranslation =
+      Boolean(transText) && (block.is_user_edited || transText !== origText);
+    if (!block.is_user_edited && isPureEquationOrSymbol(origText)) {
+      return null;
+    }
+
+    const zoomScale = pWidth / baseWidth;
+    const boxWidthPx = (x1 - x0) * pWidth;
+    const boxHeightPx = (y1 - y0) * pHeight;
+    const isHovered = hoveredBlockId === block.id;
+
+    // Nếu chưa có bản dịch khác biệt: chỉ hiển thị vùng tương tác trong suốt để click sửa khi cần
+    if (!hasDistinctTranslation) {
       return (
         <div
           key={block.id}
@@ -255,110 +344,61 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
             width: `${(x1 - x0) * 100}%`,
             height: `${(y1 - y0) * 100}%`,
           }}
-          className="flex flex-col items-center justify-center p-1 bg-white border border-slate-200/80 rounded-xs shadow-2xs overflow-hidden"
+          className="pointer-events-auto cursor-pointer group"
+          onMouseEnter={() => setHoveredBlockId(block.id)}
+          onMouseLeave={() => setHoveredBlockId(null)}
+          onClick={() => {
+            setActiveBlock(block);
+            setIsEditingModalOpen(true);
+          }}
         >
-          {block.figure_image_url ? (
-            <img
-              src={block.figure_image_url}
-              alt={block.block_code}
-              className="w-full h-full object-contain"
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs">
-              [Hình vẽ / Biểu đồ gốc]
+          {isHovered && (
+            <div className="absolute -inset-0.5 rounded-xs border border-academic-navy/50 bg-blue-500/5 z-20">
+              <div className="absolute -top-5 right-0 flex items-center gap-1 bg-academic-navy text-white px-1.5 py-0.5 rounded text-[9px] font-sans shadow-md">
+                <Edit3 className="w-2.5 h-2.5" />
+                <span>Sửa ({block.block_code})</span>
+              </div>
             </div>
           )}
         </div>
       );
     }
 
-    const boxWidthPx = (x1 - x0) * pWidth;
-    const boxHeightPx = (y1 - y0) * pHeight;
-    const isTranslatable = block.is_translatable;
-    const isHovered = hoveredBlockId === block.id;
+    // Phân loại kiểu hiển thị theo nhãn ngữ nghĩa
+    const isPaperTitle =
+      label === 'title' || (page.page_number === 1 && block.block_code === 'BLK_0002');
+    const isSectionHeader =
+      !isPaperTitle && (label === 'section header' || label === 'heading');
+    const isCaption = label === 'caption' || isMainCaption;
 
-    // 2. Khối TIÊU ĐỀ CHÍNH (Title)
-    if (label === 'title') {
-      return (
-        <div
-          key={block.id}
-          style={{
-            position: 'absolute',
-            left: `${x0 * 100}%`,
-            top: `${y0 * 100}%`,
-            width: `${(x1 - x0) * 100}%`,
-            height: `${(y1 - y0) * 100}%`,
-          }}
-          className="font-serif font-bold text-slate-900 tracking-tight leading-snug flex items-center justify-center text-center cursor-pointer select-text group"
-          onClick={() => {
-            if (isTranslatable) {
-              setActiveBlock(block);
-              setIsEditingModalOpen(true);
-            }
-          }}
-        >
-          <div className="text-base sm:text-lg md:text-xl font-bold">
-            <MathRenderer text={rawText} />
-          </div>
-        </div>
-      );
+    let minFont = 7.4 * zoomScale;
+    let maxFont = 11.6 * zoomScale;
+    let lineHeightRatio = 1.24;
+
+    if (isPaperTitle) {
+      minFont = 11.0 * zoomScale;
+      maxFont = 18.5 * zoomScale;
+      lineHeightRatio = 1.18;
+    } else if (isSectionHeader) {
+      minFont = 9.0 * zoomScale;
+      maxFont = 13.0 * zoomScale;
+      lineHeightRatio = 1.18;
+    } else if (isCaption) {
+      minFont = 7.2 * zoomScale;
+      maxFont = 10.2 * zoomScale;
+      lineHeightRatio = 1.22;
     }
 
-    // 3. Khối TIÊU ĐỀ MỤC (Section Header)
-    if (label === 'section header' || label === 'heading') {
-      return (
-        <div
-          key={block.id}
-          style={{
-            position: 'absolute',
-            left: `${x0 * 100}%`,
-            top: `${y0 * 100}%`,
-            width: `${(x1 - x0) * 100}%`,
-            height: `${(y1 - y0) * 100}%`,
-          }}
-          className="font-serif font-bold text-slate-900 uppercase tracking-wide leading-tight flex items-start cursor-pointer select-text group"
-          onClick={() => {
-            if (isTranslatable) {
-              setActiveBlock(block);
-              setIsEditingModalOpen(true);
-            }
-          }}
-        >
-          <div className="text-xs sm:text-sm font-bold text-slate-900 border-b border-slate-200 w-full pb-0.5">
-            <MathRenderer text={rawText} />
-          </div>
-        </div>
-      );
-    }
+    const optimalFontSize = calculateOptimalFontSize(
+      transText,
+      boxWidthPx,
+      boxHeightPx,
+      minFont,
+      maxFont,
+      lineHeightRatio
+    );
 
-    // 4. Khối CHÚ THÍCH HÌNH / BẢNG (Caption)
-    if (label === 'caption') {
-      return (
-        <div
-          key={block.id}
-          style={{
-            position: 'absolute',
-            left: `${x0 * 100}%`,
-            top: `${y0 * 100}%`,
-            width: `${(x1 - x0) * 100}%`,
-            height: `${(y1 - y0) * 100}%`,
-          }}
-          className="font-sans italic text-slate-600 leading-tight text-center flex items-center justify-center cursor-pointer select-text text-[10px] sm:text-[11px]"
-          onClick={() => {
-            if (isTranslatable) {
-              setActiveBlock(block);
-              setIsEditingModalOpen(true);
-            }
-          }}
-        >
-          <MathRenderer text={rawText} />
-        </div>
-      );
-    }
-
-    // 5. Khối ĐOẠN VĂN HỌC THUẬT (Paragraph / Text)
-    const optimalFontSize = calculateOptimalFontSize(rawText, boxWidthPx, boxHeightPx);
+    const isShortSingleLine = boxHeightPx < 24 * zoomScale;
 
     return (
       <div
@@ -370,50 +410,58 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
           width: `${(x1 - x0) * 100}%`,
           height: `${(y1 - y0) * 100}%`,
         }}
-        className={`pointer-events-auto transition-all group overflow-hidden select-text ${
-          isTranslatable ? 'cursor-pointer' : ''
+        className={`pointer-events-auto transition-all group select-text cursor-pointer ${
+          isShortSingleLine ? 'overflow-visible' : 'overflow-hidden'
         }`}
         onMouseEnter={() => setHoveredBlockId(block.id)}
         onMouseLeave={() => setHoveredBlockId(null)}
         onClick={() => {
-          if (isTranslatable) {
-            setActiveBlock(block);
-            setIsEditingModalOpen(true);
-          }
+          setActiveBlock(block);
+          setIsEditingModalOpen(true);
         }}
       >
-        {/* Khung viền hover tinh tế & Nút sửa nhanh */}
-        {isTranslatable && (
-          <div
-            className={`absolute -inset-0.5 rounded-xs transition-opacity ${
-              isHovered
-                ? 'border border-academic-navy/60 bg-blue-500/5 shadow-2xs'
-                : 'border-transparent'
-            }`}
-          >
-            {isHovered && (
-              <div className="absolute -top-5 right-0 z-20 flex items-center gap-1 bg-academic-navy text-white px-1.5 py-0.5 rounded text-[9px] font-sans shadow-md animate-in fade-in duration-100">
-                <Edit3 className="w-2.5 h-2.5" />
-                <span>Sửa ({block.block_code})</span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Layer 1: Smart Whiteout (#FFFFFF) xóa sạch chữ tiếng Anh gốc bên dưới */}
+        <div className="absolute -inset-x-[2px] -inset-y-[1.5px] bg-white pointer-events-none z-0" />
 
+        {/* Khung viền hover & Nút sửa nhanh */}
         <div
-          className="w-full h-full text-slate-800 font-serif leading-snug flex flex-col justify-start text-justify"
+          className={`absolute -inset-0.5 rounded-xs transition-opacity z-20 pointer-events-none ${
+            isHovered
+              ? 'border border-academic-navy/60 bg-blue-500/5 shadow-2xs'
+              : 'border-transparent'
+          }`}
+        >
+          {isHovered && (
+            <div className="absolute -top-5 right-0 flex items-center gap-1 bg-academic-navy text-white px-1.5 py-0.5 rounded text-[9px] font-sans shadow-md animate-in fade-in duration-100">
+              <Edit3 className="w-2.5 h-2.5" />
+              <span>Sửa ({block.block_code})</span>
+            </div>
+          )}
+        </div>
+
+        {/* Layer 2: Văn bản tiếng Việt học thuật + KaTeX */}
+        <div
+          className={`relative z-10 w-full h-full font-serif text-slate-900 flex flex-col ${
+            isPaperTitle
+              ? 'font-bold text-center items-center justify-center tracking-tight'
+              : isSectionHeader
+              ? 'font-bold text-left justify-center'
+              : isCaption
+              ? 'text-slate-800 text-justify justify-start'
+              : 'text-justify justify-start'
+          }`}
           style={{
             fontSize: `${optimalFontSize}px`,
-            lineHeight: '1.35',
+            lineHeight: `${lineHeightRatio}`,
           }}
         >
-          <MathRenderer text={rawText} />
+          <MathRenderer text={transText} />
         </div>
 
         {/* Huy hiệu đánh dấu khối đã sửa thủ công */}
         {block.is_user_edited && (
           <div
-            className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-500"
+            className="absolute bottom-0.5 right-0.5 z-20 w-2 h-2 rounded-full bg-emerald-500"
             title="Khối đã hiệu đính thủ công"
           />
         )}
@@ -422,7 +470,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   };
 
   /**
-   * Render 1 Trang Đơn Lẻ trong chuỗi liên tục
+   * Render 1 Trang Đơn Lẻ trong chuỗi liên tục (3-Layer HTML Canvas)
    */
   const renderSinglePage = (page: CanvasPage) => {
     const aspectRatio =
@@ -459,7 +507,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
                 <img
                   src={page.page_image_url}
                   alt={`Bản gốc trang ${page.page_number}`}
-                  className="w-full h-full object-contain block"
+                  className="w-full h-full object-fill block"
                   loading="lazy"
                 />
               </div>
@@ -475,7 +523,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
               </div>
             )}
 
-            {/* Chế độ ORIGINAL: Chỉ hiển thị ảnh scan gốc */}
+            {/* Chế độ ORIGINAL: Chỉ hiển thị ảnh scan gốc Layer 0 */}
             {viewMode === 'ORIGINAL' ? (
               <div
                 className="relative bg-white shadow-paper rounded-xs overflow-hidden border border-slate-300"
@@ -484,30 +532,27 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
                 <img
                   src={page.page_image_url}
                   alt={`Bản gốc trang ${page.page_number}`}
-                  className="w-full h-full object-contain block"
+                  className="w-full h-full object-fill block"
                   loading="lazy"
                 />
               </div>
             ) : (
-              /* Chế độ TRANSLATED / SIDE_BY_SIDE: Trang Word Trắng Sạch Tinh Tế */
+              /* Chế độ TRANSLATED / SIDE_BY_SIDE: 3-Layer HTML Canvas (Layer 0 Base Page + Layer 1 Whiteout + Layer 2 VI Text) */
               <div
                 className="relative bg-white shadow-paper hover:shadow-paper-hover transition-shadow rounded-xs border border-slate-300 overflow-hidden"
                 style={{ width: `${displayWidth}px`, height: `${pageHeight}px` }}
               >
-                {/* Header trang học thuật nhẹ nhàng */}
-                <div className="absolute top-3 left-8 right-8 flex justify-between items-center text-[10px] text-slate-400 font-serif border-b border-slate-100 pb-1 select-none pointer-events-none">
-                  <span className="truncate max-w-sm">{canvasData.title || 'Paper Translation'}</span>
-                  <span>Bản dịch Tiếng Việt</span>
-                </div>
+                {/* Layer 0: Ảnh nền trang gốc 200 DPI bảo toàn 100% sơ đồ, hình ảnh, bảng biểu */}
+                <img
+                  src={page.page_image_url}
+                  alt={`Trang ${page.page_number}`}
+                  className="absolute inset-0 w-full h-full object-fill block pointer-events-none select-none"
+                  loading="lazy"
+                />
 
-                {/* Các khối nội dung tái tạo sạch */}
-                <div className="absolute inset-0 pt-7 pb-8 px-6">
-                  {page.blocks.map((b) => renderCleanWordBlock(b, displayWidth, pageHeight))}
-                </div>
-
-                {/* Số trang căn giữa chân trang */}
-                <div className="absolute bottom-2.5 inset-x-0 text-center text-[10px] text-slate-400 font-serif select-none pointer-events-none">
-                  — {page.page_number} —
+                {/* Layer 1 + Layer 2: Khối phủ trắng & Bản dịch tiếng Việt định vị tuyệt đối [0..1] */}
+                <div className="absolute inset-0">
+                  {page.blocks.map((b) => renderOverlayBlock(b, page, displayWidth, pageHeight))}
                 </div>
               </div>
             )}

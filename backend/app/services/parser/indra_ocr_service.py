@@ -253,18 +253,28 @@ class IndraOcrService:
                         if ln.text.strip()
                     ]
 
+                # Tính kích thước hệ tọa độ pixel của trang trong Indra OCR (mặc định 200 DPI -> scale = 200/72)
+                dpi = float(getattr(converter, "dpi", 200.0))
+                page_scale = min(dpi / 72.0, (4_000_000 / max(width_pt * height_pt, 1.0)) ** 0.5)
+                page_max_x = max(
+                    (max(b.get("bbox", [0, 0, 0, 0])[0], b.get("bbox", [0, 0, 0, 0])[2]) for b in raw_blocks),
+                    default=0.0,
+                )
+                page_max_y = max(
+                    (max(b.get("bbox", [0, 0, 0, 0])[1], b.get("bbox", [0, 0, 0, 0])[3]) for b in raw_blocks),
+                    default=0.0,
+                )
+                if page_max_x > width_pt * 1.05 or page_max_y > height_pt * 1.05:
+                    ref_w = max(width_pt * page_scale, page_max_x)
+                    ref_h = max(height_pt * page_scale, page_max_y)
+                else:
+                    ref_w = width_pt
+                    ref_h = height_pt
+
                 for raw_b in raw_blocks:
                     label = self._map_indra_label(raw_b.get("label", "text"))
-                    bbox_raw = raw_b.get("bbox", [0, 0, width_pt, height_pt])
+                    bbox_raw = raw_b.get("bbox", [0, 0, ref_w, ref_h])
                     text = raw_b.get("text", "").strip()
-
-                    # Ước lượng width/height gốc của OCR để chuẩn hóa
-                    # indra box tọa độ theo pixel render (mặc định 200 DPI hoặc fitz_page)
-                    # Nếu max(bbox_raw) > width_pt * 1.5, đó là DPI pixel
-                    max_x = max(bbox_raw[0], bbox_raw[2])
-                    max_y = max(bbox_raw[1], bbox_raw[3])
-                    ref_w = max(width_pt, max_x)
-                    ref_h = max(height_pt, max_y)
 
                     bbox_norm = normalize_bbox(bbox_raw, ref_w, ref_h)
                     block_code = f"BLK_{global_block_idx:04d}"
