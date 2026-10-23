@@ -8,6 +8,27 @@ import fitz
 
 from app.core.logging import logger
 
+JUNK_WATERMARK_REGEX = re.compile(
+    r"(?i)(?:^arxiv:\d{4}\.\d+.*"
+    r"|.*ieee\s+transactions.*"
+    r"|.*cvpr.*"
+    r"|.*iccv.*"
+    r"|.*neurips.*"
+    r"|.*icml.*"
+    r"|.*conference\s+on\s+computer\s+vision.*"
+    r"|.*authorized\s+licensed\s+use\s+limited\s+to:.*"
+    r"|.*downloaded\s+on\s+.*utc\s+from\s+ieee.*"
+    r"|.*copyright\s+©.*"
+    r"|.*all\s+rights\s+reserved.*"
+    r"|^\d+\s*$)",
+    re.DOTALL,
+)
+
+REFERENCES_HEADER_REGEX = re.compile(
+    r"(?i)^(?:[0-9IVX]+\.?\s*)?(?:references|bibliography|tài liệu tham khảo)\b"
+)
+
+
 
 @dataclass
 class ParsedBlock:
@@ -87,20 +108,32 @@ class IndraOcrService:
             try:
                 import indra_ocr
 
+                from app.core.config import settings
+
+                model_path = (
+                    str(settings.indra_models_dir)
+                    if (settings.indra_models_dir / "det.onnx").exists()
+                    else None
+                )
+
                 # Đảm bảo tương thích Windows encoding (UTF-8) khi nạp mô hình toán
                 try:
                     self._converter = indra_ocr.load(
-                        threads=self.threads, math=True, mode="auto"
+                        path=model_path, threads=self.threads, math=True, mode="auto"
                     )
-                    logger.info("Khởi tạo thành công Indra OCR Converter với 4 threads (Math LaTeX enabled).")
+                    logger.info(
+                        f"Khởi tạo thành công Indra OCR Converter từ {model_path or 'cache'} với 4 threads (Math LaTeX enabled)."
+                    )
                 except Exception as math_err:
                     logger.warning(
                         f"Không thể kích hoạt module Math của Indra OCR ({math_err}). Tự động nạp Indra OCR chế độ chuẩn..."
                     )
                     self._converter = indra_ocr.load(
-                        threads=self.threads, math=False, mode="auto"
+                        path=model_path, threads=self.threads, math=False, mode="auto"
                     )
-                    logger.info("Khởi tạo thành công Indra OCR Converter với 4 threads (Standard mode).")
+                    logger.info(
+                        f"Khởi tạo thành công Indra OCR Converter từ {model_path or 'cache'} với 4 threads (Standard mode)."
+                    )
             except Exception as e:
                 logger.warning(
                     f"Không thể khởi tạo mô hình Indra OCR ({e}). Sử dụng PyMuPDF layout fallback."
@@ -257,6 +290,35 @@ class IndraOcrService:
                     all_blocks.append(pb)
                     global_block_idx += 1
 
+                # Trích xuất các hình vẽ trực tiếp từ fitz_page
+                if fitz_page:
+                    try:
+                        for img_info in fitz_page.get_image_info(xrefs=True):
+                            ibox = img_info.get("bbox")
+                            if ibox and (ibox[2] - ibox[0] > 60) and (ibox[3] - ibox[1] > 60):
+                                norm_box = normalize_bbox(ibox, width_pt, height_pt)
+                                if not any(
+                                    pb.label == "figure"
+                                    and abs(pb.bbox_norm[0] - norm_box[0]) < 0.05
+                                    and abs(pb.bbox_norm[1] - norm_box[1]) < 0.05
+                                    for pb in page_blocks
+                                ):
+                                    fig_code = f"BLK_{global_block_idx:04d}"
+                                    fig_pb = ParsedBlock(
+                                        reading_order=global_block_idx - 1,
+                                        page_number=page_num,
+                                        block_code=fig_code,
+                                        label="figure",
+                                        bbox_norm=norm_box,
+                                        text="",
+                                        is_translatable=False,
+                                    )
+                                    page_blocks.append(fig_pb)
+                                    all_blocks.append(fig_pb)
+                                    global_block_idx += 1
+                    except Exception as img_err:
+                        logger.debug(f"Không thể trích xuất image info trang {page_num}: {img_err}")
+
                 parsed_pages.append(
                     ParsedPage(
                         page_number=page_num,
@@ -269,6 +331,8 @@ class IndraOcrService:
                 )
         finally:
             doc_fitz.close()
+
+        self._post_process_blocks(parsed_pages)
 
         return ParsedDocument(
             title=extracted_title,
@@ -381,11 +445,70 @@ class IndraOcrService:
         finally:
             doc.close()
 
+        self._post_process_blocks(parsed_pages)
+
         return ParsedDocument(
             title=extracted_title or "Untitled Scientific Paper",
             total_pages=len(parsed_pages),
             pages=parsed_pages,
             blocks=all_blocks,
         )
+
+    def _post_process_blocks(self, pages: list[ParsedPage]) -> None:
+        """
+        Hậu xử lý danh sách khối sau khi OCR:
+        1. Nhận diện mục References / Bibliography: đánh dấu is_translatable = False cho toàn bộ khối tham khảo.
+        2. Nhận diện Watermark / Header / Footer rác của nhà xuất bản (IEEE, CVPR, arXiv...) để loại trừ.
+        3. Phát hiện các khối text lọt bên trong Bounding Box của figure để không dịch đè lên hình ảnh.
+        """
+        in_references = False
+
+        for page in pages:
+            # Thu thập các bounding box của figure trên trang hiện tại
+            fig_boxes = [b.bbox_norm for b in page.blocks if b.label == "figure"]
+
+            for b in page.blocks:
+                text = (b.text or "").strip()
+                label = (b.label or "").lower()
+
+                # 1. BẮT BUỘC: Kiểm tra bắt đầu mục References / Bibliography TRƯỚC TIÊN
+                if not in_references and (
+                    REFERENCES_HEADER_REGEX.match(text)
+                    or (label == "section header" and text.lower() in ("references", "bibliography"))
+                    or text.lower().startswith("references\n")
+                    or text.lower().startswith("references \n")
+                ):
+                    in_references = True
+                    b.is_translatable = False
+                    continue
+
+                if in_references:
+                    b.is_translatable = False
+                    continue
+
+                # 2. Kiểm tra watermark / header / footer rác (chỉ áp dụng text ngắn < 250 ký tự)
+                if label in ("page header", "page footer"):
+                    b.is_translatable = False
+                    continue
+
+                if len(text) < 250 and JUNK_WATERMARK_REGEX.match(text):
+                    b.is_translatable = False
+                    continue
+
+                # 3. Kiểm tra text lọt hoàn toàn bên trong figure
+                if label != "figure" and fig_boxes:
+                    bx0, by0, bx1, by1 = b.bbox_norm
+                    is_inside_fig = False
+                    for fx0, fy0, fx1, fy1 in fig_boxes:
+                        if bx0 >= fx0 - 0.02 and by0 >= fy0 - 0.02 and bx1 <= fx1 + 0.02 and by1 <= fy1 + 0.02:
+                            is_inside_fig = True
+                            break
+                    if is_inside_fig:
+                        b.is_translatable = False
+                        b.label = "figure_text"
+                        continue
+
+                if label == "figure":
+                    b.is_translatable = False
 
 

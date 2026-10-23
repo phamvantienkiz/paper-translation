@@ -20,14 +20,20 @@ async def lifespan(app: FastAPI):
     import os
     import tempfile
     
+    # Thiết lập biến môi trường cô lập tuyệt đối bên trong workspace
     temp_dir_path = str(settings.temp_dir)
     os.environ["TMPDIR"] = temp_dir_path
     os.environ["TEMP"] = temp_dir_path
     os.environ["TMP"] = temp_dir_path
     tempfile.tempdir = temp_dir_path
 
-    # Thư mục cache model OCR nếu chạy local
-    os.environ["INDRA_OCR_MODEL_DIR"] = str(settings.models_dir)
+    # Chuyển hướng toàn bộ cache HuggingFace vào trong workspace
+    hf_cache_dir = str(settings.models_dir / "cache")
+    os.environ["HF_HOME"] = hf_cache_dir
+    os.environ["HUGGINGFACE_HUB_CACHE"] = hf_cache_dir
+
+    # Thư mục chứa model Indra OCR cục bộ trong workspace
+    os.environ["INDRA_OCR_MODEL_DIR"] = str(settings.indra_models_dir)
 
     (settings.STORAGE_DIR / "raw").mkdir(parents=True, exist_ok=True)
     (settings.STORAGE_DIR / "assets").mkdir(parents=True, exist_ok=True)

@@ -57,20 +57,46 @@ class TranslationService:
         processed_blocks = 0
 
         # Lấy thể hiện Singleton của LlamaCppService
+        if not LlamaCppService._instance or not LlamaCppService._instance.is_loaded:
+            if progress_callback:
+                res = progress_callback(0, total_blocks, f"Đang nạp mô hình Qwen3 GGUF ({settings.LLM_MODEL_NAME}) vào RAM...")
+                if asyncio.iscoroutine(res):
+                    await res
+
         llama_service = LlamaCppService.get_instance()
         loop = asyncio.get_running_loop()
 
         for batch_idx, batch in enumerate(batches):
+            b_start_idx = processed_blocks + 1
+            b_end_idx = processed_blocks + len(batch)
+
+            if progress_callback:
+                msg = f"Đang suy luận qua Qwen3 Local LLM: Lô {batch_idx + 1}/{len(batches)} (khối {b_start_idx}-{b_end_idx}/{total_blocks})..."
+                res = progress_callback(processed_blocks, total_blocks, msg)
+                if asyncio.iscoroutine(res):
+                    await res
+
             messages = self.batcher.build_prompt_messages(batch)
-            
+            est_tokens = sum(self.batcher.estimate_tokens(b.original_text or "") for b in batch)
+            logger.info(
+                f"Bắt đầu suy luận Lô {batch_idx + 1}/{len(batches)}: {len(batch)} khối (~{est_tokens} tokens)..."
+            )
+
+            import time
+            t0 = time.time()
+
             # Chạy suy luận trong thread pool để không block asyncio loop
             response = await loop.run_in_executor(
                 None,
                 lambda: llama_service.create_chat_completion(
                     messages=messages,
                     temperature=settings.LLM_TEMPERATURE,
-                    max_tokens=2048,
+                    max_tokens=2560,
                 ),
+            )
+            elapsed = time.time() - t0
+            logger.info(
+                f"Hoàn tất suy luận Lô {batch_idx + 1}/{len(batches)} trong {elapsed:.2f}s."
             )
 
             batch_map, missing_blocks = self.batcher.parse_response(response, batch)
@@ -80,7 +106,13 @@ class TranslationService:
                 logger.warning(
                     f"Batch {batch_idx + 1} phát hiện {len(missing_blocks)} khối bị sót mã. Kích hoạt Fallback đơn lẻ..."
                 )
-                for missing_b in missing_blocks:
+                for fb_idx, missing_b in enumerate(missing_blocks):
+                    if progress_callback:
+                        fb_msg = f"Đang hiệu đính riêng khối [[{missing_b.block_code}]] ({fb_idx + 1}/{len(missing_blocks)})..."
+                        res = progress_callback(processed_blocks, total_blocks, fb_msg)
+                        if asyncio.iscoroutine(res):
+                            await res
+
                     fb_messages = self.batcher.build_single_fallback_messages(missing_b)
                     fb_resp = await loop.run_in_executor(
                         None,
@@ -100,7 +132,7 @@ class TranslationService:
             processed_blocks += len(batch)
 
             if progress_callback:
-                msg = f"Đang dịch qua Qwen3 Local LLM: Lô {batch_idx + 1}/{len(batches)} ({processed_blocks}/{total_blocks} khối)..."
+                msg = f"Đã hoàn tất Lô {batch_idx + 1}/{len(batches)} ({processed_blocks}/{total_blocks} khối)..."
                 res = progress_callback(processed_blocks, total_blocks, msg)
                 if asyncio.iscoroutine(res):
                     await res

@@ -65,6 +65,12 @@ class Settings(BaseSettings):
         p.mkdir(parents=True, exist_ok=True)
         return p
 
+    @property
+    def indra_models_dir(self) -> Path:
+        p = self.STORAGE_DIR / "models" / "indra_ocr"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     MAX_UPLOAD_SIZE_BYTES: int = 52_428_800  # 50 MB
 
     # =========================================================================

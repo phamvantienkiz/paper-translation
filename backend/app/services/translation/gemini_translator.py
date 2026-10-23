@@ -9,6 +9,7 @@ import httpx
 from app.core.config import settings
 from app.core.logging import logger
 from app.models.ocr_block import OcrBlockModel
+from app.services.parser.indra_ocr_service import JUNK_WATERMARK_REGEX
 from app.services.translation.glossary import build_system_instruction
 from app.services.translation.translator import BaseTranslator, MockTranslator
 
@@ -71,7 +72,7 @@ class GeminiTranslator:
                 b.is_translatable = False
                 continue
 
-            if label in ("page header", "page footer", "figure", "picture"):
+            if label in ("page header", "page footer", "figure", "picture") or JUNK_WATERMARK_REGEX.match(text):
                 b.is_translatable = False
                 continue
 

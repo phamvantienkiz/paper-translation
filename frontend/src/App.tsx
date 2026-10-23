@@ -193,7 +193,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 text-slate-800 font-sans">
       {/* Top Navbar */}
-      <header className="h-16 bg-white border-b border-slate-200/90 px-4 md:px-6 flex items-center justify-between shadow-xs z-30">
+      <header className="relative z-50 h-16 bg-white border-b border-slate-200/90 px-4 md:px-6 flex items-center justify-between shadow-xs">
         {/* Brand & Edition */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-academic-navy flex items-center justify-center text-white shadow-xs">
@@ -289,7 +289,12 @@ export const App: React.FC = () => {
             </button>
 
             {isSessionDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in duration-100">
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsSessionDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-2 w-84 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in duration-100">
                 <div className="px-3.5 py-1.5 flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     Bài báo gần đây ({sessions.length})
@@ -352,7 +357,8 @@ export const App: React.FC = () => {
                   )}
                 </div>
               </div>
-            )}
+            </>
+          )}
           </div>
 
           {/* Trigger Translation Button */}

@@ -112,6 +112,90 @@ class TestAdaptiveBatcher:
         assert len(missing) == 1
         assert missing[0].block_code == "BLK_0003"
 
+    def test_batching_scientific_paper_strictly_under_5_batches(self):
+        """Kiểm tra gom lô bài báo khoa học 120 khối (~4000 tokens) luôn nằm trong khoảng 2-4 batch, không quá 5 batch."""
+        batcher = AdaptiveBatcher(max_batches=5, max_tokens_per_batch=3500)
+
+        # Giả lập 120 khối văn bản của 1 bài báo khoa học 11 trang
+        blocks = [
+            OcrBlockModel(
+                id=f"blk_{i}",
+                session_id="s1",
+                page_id="p1",
+                page_number=1 + (i // 15),
+                block_code=f"BLK_{i:04d}",
+                reading_order=i,
+                label="text",
+                bbox_x0=0.0,
+                bbox_y0=0.0,
+                bbox_x1=0.5,
+                bbox_y1=1.0,
+                is_translatable=True,
+                original_text="Deep convolutional neural network architectures demonstrate state-of-the-art accuracy on computer vision benchmarks with residual connections." * 2,
+            )
+            for i in range(120)
+        ]
+
+        batches = batcher.create_batches(blocks)
+        # Số batch phải <= 5 (tối ưu 2-4 batch), không được phân mảnh thành 27 batch
+        assert len(batches) <= 5
+        assert len(batches) >= 2
+        # Tất cả các khối đều được bao gồm
+        total_batched_blocks = sum(len(b) for b in batches)
+        assert total_batched_blocks == 120
+
+    def test_smart_filter_skips_references_and_watermarks(self):
+        """Kiểm tra logic lọc thông minh: Bỏ qua watermark rác và toàn bộ mục References."""
+        from app.services.translation.gemini_translator import GeminiTranslator
+
+        translator = GeminiTranslator()
+        blocks = [
+            OcrBlockModel(
+                id="1", session_id="s", page_id="p", page_number=1, block_code="BLK_0001",
+                reading_order=1, label="page header", bbox_x0=0, bbox_y0=0, bbox_x1=1, bbox_y1=0.05,
+                is_translatable=True, original_text="arXiv:2305.12345v1 [cs.CV] 19 May 2023"
+            ),
+            OcrBlockModel(
+                id="2", session_id="s", page_id="p", page_number=1, block_code="BLK_0002",
+                reading_order=2, label="title", bbox_x0=0, bbox_y0=0.1, bbox_x1=1, bbox_y1=0.2,
+                is_translatable=True, original_text="Attention Is All You Need"
+            ),
+            OcrBlockModel(
+                id="3", session_id="s", page_id="p", page_number=1, block_code="BLK_0003",
+                reading_order=3, label="text", bbox_x0=0, bbox_y0=0.2, bbox_x1=1, bbox_y1=0.3,
+                is_translatable=True, original_text="The dominant sequence transduction models are based on complex recurrent networks."
+            ),
+            OcrBlockModel(
+                id="4", session_id="s", page_id="p", page_number=2, block_code="BLK_0004",
+                reading_order=4, label="section header", bbox_x0=0, bbox_y0=0.1, bbox_x1=1, bbox_y1=0.15,
+                is_translatable=True, original_text="References"
+            ),
+            OcrBlockModel(
+                id="5", session_id="s", page_id="p", page_number=2, block_code="BLK_0005",
+                reading_order=5, label="text", bbox_x0=0, bbox_y0=0.15, bbox_x1=1, bbox_y1=0.3,
+                is_translatable=True, original_text="[1] J. Smith, Modern Deep Learning, 2021."
+            ),
+            OcrBlockModel(
+                id="6", session_id="s", page_id="p", page_number=2, block_code="BLK_0006",
+                reading_order=6, label="text", bbox_x0=0, bbox_y0=0.3, bbox_x1=1, bbox_y1=0.45,
+                is_translatable=True, original_text="[2] A. Vaswani et al., NIPS 2017."
+            ),
+        ]
+
+        translator.apply_smart_filter(blocks)
+
+        # BLK_0001 (watermark/header): is_translatable = False
+        assert blocks[0].is_translatable is False
+        # BLK_0002 (title): is_translatable = True
+        assert blocks[1].is_translatable is True
+        # BLK_0003 (core text): is_translatable = True
+        assert blocks[2].is_translatable is True
+        # BLK_0004 (references header): is_translatable = False
+        assert blocks[3].is_translatable is False
+        # BLK_0005 & BLK_0006 (references items): is_translatable = False
+        assert blocks[4].is_translatable is False
+        assert blocks[5].is_translatable is False
+
 
 @pytest.mark.asyncio
 class TestSystemEngineAPI:
