@@ -6,7 +6,7 @@ from app.models.ocr_block import OcrBlockModel
 from app.services.parser.indra_ocr_service import IndraOcrService
 from app.services.translation.adaptive_batcher import AdaptiveBatcher
 
-REAL_PAPER_PATH = Path("storage/temp/Feijoo_DarkIR_Robust_Low-Light_Image_Restoration_CVPR_2025_paper.pdf")
+REAL_PAPER_PATH = Path("storage/raw_pdfs/Feijoo_DarkIR_Robust_Low-Light_Image_Restoration_CVPR_2025_paper.pdf")
 
 
 @pytest.fixture(scope="module")
@@ -40,8 +40,8 @@ class TestRealPaperE2E:
         )
 
     def test_real_paper_batching_strictly_under_limit(self, parsed_doc):
-        """Kiểm tra gom lô bài báo 11 trang thực tế chỉ phân bổ vào <= 7 batch."""
-        batcher = AdaptiveBatcher(max_batches=7, max_tokens_per_batch=1600, max_blocks_per_batch=25)
+        """Kiểm tra gom lô bài báo 11 trang thực tế chỉ phân bổ vào 2 - 4 batch (tối đa 5-7 batch), mỗi batch <= 2500 từ."""
+        batcher = AdaptiveBatcher()
 
         db_blocks = [
             OcrBlockModel(
@@ -65,12 +65,13 @@ class TestRealPaperE2E:
         translatable = [b for b in db_blocks if b.is_translatable and (b.original_text or "").strip()]
         batches = batcher.create_batches(translatable)
 
-        # Số batch phải tối ưu <= 7 batch (theo đúng yêu cầu tối đa 5 - 7 batch)
-        assert len(batches) <= 7, f"Số batch ({len(batches)}) vượt quá giới hạn tối đa 7 batch"
+        # Số batch phải tối ưu trong khoảng 2 - 4 batch (tối đa 5 - 7 batch)
+        assert len(batches) <= 5, f"Số batch ({len(batches)}) vượt quá giới hạn tối đa 5 batch"
         assert len(batches) >= 2, f"Số batch ({len(batches)}) quá ít so với dung lượng bài báo"
 
         for b in batches:
-            assert len(b) <= 25, f"Một batch chứa {len(b)} khối, vượt quá trần 25 khối"
+            words = sum(batcher.count_words(x.original_text or "") for x in b)
+            assert words <= 2500, f"Một batch chứa {words} từ, vượt quá trần 2500 từ"
 
     def test_real_paper_prompt_structure(self, parsed_doc):
         """Kiểm tra cấu trúc Prompt chuẩn ChatML cho Batch 1 bảo toàn các khối."""

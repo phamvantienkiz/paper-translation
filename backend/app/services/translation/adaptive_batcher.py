@@ -9,8 +9,9 @@ class AdaptiveBatcher:
     """
     Bộ đóng gói phân lô thích ứng (Adaptive Batching) và bóc tách bản dịch bảo toàn mã khối:
     - Gom nhóm văn bản thông minh hướng ngưỡng <= 5 batch (tối ưu 2–4 batch).
-    - Tính toán ngân sách token đầu vào (~3,500 token/batch) tối ưu cho ngữ cảnh 8K (n_ctx=8192).
-    - Thiết kế prompt theo kỹ thuật Prompt Engineering bảo toàn mã khối [[BLK_XXXX]], LaTeX $..$, và bảng.
+    - Ngân sách đầu vào chuẩn hóa tương đương 2000 - 2500 từ tiếng Anh / batch (tránh suy giảm chất lượng).
+    - Hỗ trợ context window 16K (n_ctx=16384) và dung lượng đầu ra tiếng Việt 4000 - 6000 tokens.
+    - Thiết kế prompt theo kỹ thuật Prompt Engineering bảo toàn mã khối [[BLK_XXXX]], LaTeX $..$, và bảng biểu.
     - Bóc tách bản dịch qua Regex và tự động kích hoạt Fallback đơn lẻ nếu thiếu khối.
     """
 
@@ -19,82 +20,100 @@ class AdaptiveBatcher:
     def __init__(
         self,
         max_batches: int = 7,
-        max_tokens_per_batch: int = 1600,
-        max_blocks_per_batch: int = 25,
+        max_tokens_per_batch: int = 3500,
+        max_words_per_batch: int = 1500,
+        max_blocks_per_batch: int = 60,
         min_blocks_per_batch: int = 4,
     ):
         self.max_batches = max_batches
         self.max_tokens_per_batch = max_tokens_per_batch
+        self.max_words_per_batch = max_words_per_batch
         self.max_blocks_per_batch = max_blocks_per_batch
         self.min_blocks_per_batch = min_blocks_per_batch
 
     @staticmethod
-    def estimate_tokens(text: str) -> int:
-        """Ước tính số lượng token sơ bộ (1 token ~= 4 ký tự tiếng Anh)."""
+    def count_words(text: str) -> int:
+        """Đếm số lượng từ tiếng Anh trong chuỗi văn bản."""
         if not text:
             return 0
-        return max(1, len(text) // 4)
+        return len(text.split())
+
+    @staticmethod
+    def estimate_tokens(text: str) -> int:
+        """
+        Ước tính số lượng token tiếng Anh cho mô hình BPE (Qwen3):
+        1 từ tiếng Anh trung bình ~1.35 tokens (hoặc len(text) // 4).
+        """
+        if not text:
+            return 0
+        words = len(text.split())
+        return max(1, max(int(words * 1.35), len(text) // 4))
 
     def create_batches(self, blocks: list[OcrBlockModel]) -> list[list[OcrBlockModel]]:
         """
         Gom danh sách khối thành các batch thích ứng hướng ngưỡng <= 5 batch:
-        - Đếm tổng token T của toàn bộ các khối cần dịch.
-        - Phân bổ thành 1 đến 5 batch sao cho mỗi batch cân bằng và không vượt quá ngân sách context 8K.
+        - Tính tổng số từ tiếng Anh và token của toàn bộ các khối cần dịch.
+        - Khống chế trần cứng mỗi batch tương đương 2000 - 2500 từ tiếng Anh để đảm bảo chất lượng suy luận.
+        - Phân bổ đều giữa các batch sao cho đạt tối ưu 2–4 batch cho bài báo chuẩn.
         """
         if not blocks:
             return []
 
-        total_tokens = sum(self.estimate_tokens(b.original_text or "") for b in blocks)
+        # Tính toán dung lượng từ tối đa hiệu dụng (tương thích ngược nếu truyền max_tokens_per_batch nhỏ)
+        token_word_limit = int(self.max_tokens_per_batch / 1.35)
+        effective_max_words = min(self.max_words_per_batch, max(1, token_word_limit))
+
+        total_words = sum(self.count_words(b.original_text or "") for b in blocks)
 
         # Tính toán số lượng batch mục tiêu
-        if total_tokens <= self.max_tokens_per_batch:
+        if total_words <= effective_max_words:
             target_batches = 1
-        elif total_tokens <= self.max_tokens_per_batch * 2:
+        elif total_words <= effective_max_words * 2:
             target_batches = 2
-        elif total_tokens <= self.max_tokens_per_batch * 3:
+        elif total_words <= effective_max_words * 3:
             target_batches = 3
-        elif total_tokens <= self.max_tokens_per_batch * 4:
+        elif total_words <= effective_max_words * 4:
             target_batches = 4
         else:
             target_batches = min(
                 self.max_batches,
-                max(1, math.ceil(total_tokens / self.max_tokens_per_batch)),
+                max(1, math.ceil(total_words / effective_max_words)),
             )
 
         # Đảm bảo không nhiều batch hơn số khối
         target_batches = max(1, min(target_batches, len(blocks)))
-
-        tokens_per_batch_target = math.ceil(total_tokens / target_batches)
+        words_per_batch_target = math.ceil(total_words / target_batches)
 
         batches: list[list[OcrBlockModel]] = []
         current_batch: list[OcrBlockModel] = []
-        current_tokens = 0
+        current_words = 0
 
         for block in blocks:
-            b_tokens = self.estimate_tokens(block.original_text or "")
+            b_words = self.count_words(block.original_text or "")
 
             # Điều kiện chuyển batch:
             # 1. Đã có khối trong batch hiện tại
-            # 2. Vẫn còn slot batch (chưa đạt target_batches)
-            # 3. Hoặc batch hiện tại đã đạt mục tiêu token, hoặc vượt quá số khối tối đa
+            # 2. Vượt trần khối tối đa (max_blocks_per_batch)
+            # 3. Vượt trần từ tối đa (effective_max_words: <= 2500 từ)
+            # 4. Đạt ngưỡng mục tiêu phân bổ đều (words_per_batch_target) khi vẫn còn slot batch
             reach_max_blocks = len(current_batch) >= self.max_blocks_per_batch
-            reach_token_ceiling = current_tokens + b_tokens > self.max_tokens_per_batch
+            reach_word_ceiling = current_words + b_words > effective_max_words
             balanced_split = (
                 len(batches) < target_batches - 1
-                and current_tokens + b_tokens > tokens_per_batch_target
+                and current_words + b_words > words_per_batch_target
             )
 
             should_split = len(current_batch) > 0 and (
-                reach_max_blocks or reach_token_ceiling or balanced_split
+                reach_max_blocks or reach_word_ceiling or balanced_split
             )
 
             if should_split:
                 batches.append(current_batch)
                 current_batch = [block]
-                current_tokens = b_tokens
+                current_words = b_words
             else:
                 current_batch.append(block)
-                current_tokens += b_tokens
+                current_words += b_words
 
         if current_batch:
             batches.append(current_batch)

@@ -82,9 +82,11 @@ class Settings(BaseSettings):
     # =========================================================================
     LLM_PROVIDER: str = "llama_cpp"  # llama_cpp, gemini, openai, ollama, lm_studio, self_hosted
     LLM_MODEL_NAME: str = "Qwen3-1.7B-Q4_K_M.gguf"
-    LLM_LOCAL_N_CTX: int = 8192  # Mặc định 8K context (~2.8GB RAM)
+    LLM_LOCAL_N_CTX: int = 16384  # Nâng lên 16K context window (~3.5 - 3.8GB RAM)
     LLM_LOCAL_MAX_N_CTX: int = 16384  # Khóa trần cứng 16K context (<= 4.0GB RAM)
-    LLM_LOCAL_THREADS: int = 4
+    LLM_LOCAL_THREADS: int = 8  # Tối ưu hóa 6 - 8 core CPU để tăng tốc độ suy luận
+    LLM_LOCAL_N_BATCH: int = 1024  # Tăng throughput prompt ingestion trên đa luồng CPU
+    LLM_LOCAL_MAX_OUTPUT_TOKENS: int = 5120  # Ngưỡng trần 4000 - 6000 tokens tránh đứt đoạn tiếng Việt
     LLM_LOCAL_N_GPU_LAYERS: int = -1  # Tự động nạp GPU nếu có CUDA, fallback sang 0 nếu CPU
     LLM_HARD_RAM_CEILING_GB: float = 4.0
 
@@ -111,8 +113,8 @@ class Settings(BaseSettings):
         """Ước tính mức chiếm dụng RAM dựa trên kích thước context window."""
         ctx = n_ctx or self.LLM_LOCAL_N_CTX
         # Model weights (~1.03GB) + KV cache + buffers
-        # 4096 ctx: ~2.5GB, 8192 ctx: ~2.8GB, 16384 ctx: ~3.8GB
-        return round(1.03 + (ctx / 8192) * 1.77, 2)
+        # 4096 ctx: ~2.5GB, 8192 ctx: ~2.8GB, 16384 ctx: ~3.75GB (trong ranh giới 3.5 - 4.0GB RAM)
+        return round(1.03 + (ctx / 16384) * 2.72, 2)
 
     @property
     def effective_api_key(self) -> str:

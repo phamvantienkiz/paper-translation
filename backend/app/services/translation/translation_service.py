@@ -86,12 +86,13 @@ class TranslationService:
             t0 = time.time()
 
             # Chạy suy luận trong thread pool để không block asyncio loop
+            max_out_tokens = getattr(settings, "LLM_LOCAL_MAX_OUTPUT_TOKENS", 5120)
             response = await loop.run_in_executor(
                 None,
                 lambda: llama_service.create_chat_completion(
                     messages=messages,
                     temperature=settings.LLM_TEMPERATURE,
-                    max_tokens=2560,
+                    max_tokens=max_out_tokens,
                 ),
             )
             elapsed = time.time() - t0
@@ -119,7 +120,7 @@ class TranslationService:
                         lambda: llama_service.create_chat_completion(
                             messages=fb_messages,
                             temperature=settings.LLM_TEMPERATURE,
-                            max_tokens=1024,
+                            max_tokens=2048,
                         ),
                     )
                     fb_map, _ = self.batcher.parse_response(fb_resp, [missing_b])
