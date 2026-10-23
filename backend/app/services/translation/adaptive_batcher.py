@@ -1,0 +1,195 @@
+import math
+import re
+
+from app.models.ocr_block import OcrBlockModel
+from app.services.translation.glossary import build_system_instruction
+
+
+class AdaptiveBatcher:
+    """
+    Bộ đóng gói phân lô thích ứng (Adaptive Batching) và bóc tách bản dịch bảo toàn mã khối:
+    - Gom nhóm văn bản thông minh hướng ngưỡng <= 5 batch (tối ưu 2–4 batch).
+    - Ngân sách đầu vào chuẩn hóa tương đương 2000 - 2500 từ tiếng Anh / batch (tránh suy giảm chất lượng).
+    - Hỗ trợ context window 16K (n_ctx=16384) và dung lượng đầu ra tiếng Việt 4000 - 6000 tokens.
+    - Thiết kế prompt theo kỹ thuật Prompt Engineering bảo toàn mã khối [[BLK_XXXX]], LaTeX $..$, và bảng biểu.
+    - Bóc tách bản dịch qua Regex và tự động kích hoạt Fallback đơn lẻ nếu thiếu khối.
+    """
+
+    BLOCK_REGEX = re.compile(r"\[\[(BLK_\d+)\]\]\s*([\s\S]*?)(?=(?:\[\[BLK_\d+\]\]|$))")
+
+    def __init__(
+        self,
+        max_batches: int = 7,
+        max_tokens_per_batch: int = 3800,
+        max_words_per_batch: int = 2500,
+        max_blocks_per_batch: int = 60,
+        min_blocks_per_batch: int = 4,
+    ):
+        self.max_batches = max_batches
+        self.max_tokens_per_batch = max_tokens_per_batch
+        self.max_words_per_batch = max_words_per_batch
+        self.max_blocks_per_batch = max_blocks_per_batch
+        self.min_blocks_per_batch = min_blocks_per_batch
+
+    @staticmethod
+    def count_words(text: str) -> int:
+        """Đếm số lượng từ tiếng Anh trong chuỗi văn bản."""
+        if not text:
+            return 0
+        return len(text.split())
+
+    @staticmethod
+    def estimate_tokens(text: str) -> int:
+        """
+        Ước tính số lượng token tiếng Anh cho mô hình BPE (Qwen3):
+        1 từ tiếng Anh trung bình ~1.35 tokens (hoặc len(text) // 4).
+        """
+        if not text:
+            return 0
+        words = len(text.split())
+        return max(1, max(int(words * 1.35), len(text) // 4))
+
+    def create_batches(self, blocks: list[OcrBlockModel]) -> list[list[OcrBlockModel]]:
+        """
+        Gom danh sách khối thành các batch thích ứng hướng ngưỡng <= 5 batch:
+        - Tính tổng số từ tiếng Anh và token của toàn bộ các khối cần dịch.
+        - Khống chế trần cứng mỗi batch tương đương 2000 - 2500 từ tiếng Anh để đảm bảo chất lượng suy luận.
+        - Phân bổ đều giữa các batch sao cho đạt tối ưu 2–4 batch cho bài báo chuẩn.
+        """
+        if not blocks:
+            return []
+
+        # Tính toán dung lượng từ tối đa hiệu dụng (tương thích ngược nếu truyền max_tokens_per_batch nhỏ)
+        token_word_limit = int(self.max_tokens_per_batch / 1.35)
+        effective_max_words = min(self.max_words_per_batch, max(1, token_word_limit))
+
+        total_words = sum(self.count_words(b.original_text or "") for b in blocks)
+
+        # Tính toán số lượng batch mục tiêu
+        if total_words <= effective_max_words:
+            target_batches = 1
+        elif total_words <= effective_max_words * 2:
+            target_batches = 2
+        elif total_words <= effective_max_words * 3:
+            target_batches = 3
+        elif total_words <= effective_max_words * 4:
+            target_batches = 4
+        else:
+            target_batches = min(
+                self.max_batches,
+                max(1, math.ceil(total_words / effective_max_words)),
+            )
+
+        # Đảm bảo không nhiều batch hơn số khối
+        target_batches = max(1, min(target_batches, len(blocks)))
+        words_per_batch_target = math.ceil(total_words / target_batches)
+
+        batches: list[list[OcrBlockModel]] = []
+        current_batch: list[OcrBlockModel] = []
+        current_words = 0
+
+        for block in blocks:
+            b_words = self.count_words(block.original_text or "")
+
+            # Điều kiện chuyển batch:
+            # 1. Đã có khối trong batch hiện tại
+            # 2. Vượt trần khối tối đa (max_blocks_per_batch)
+            # 3. Vượt trần từ tối đa (effective_max_words: <= 2500 từ)
+            # 4. Đạt ngưỡng mục tiêu phân bổ đều (words_per_batch_target) khi vẫn còn slot batch
+            reach_max_blocks = len(current_batch) >= self.max_blocks_per_batch
+            reach_word_ceiling = current_words + b_words > effective_max_words
+            balanced_split = (
+                len(batches) < target_batches - 1
+                and current_words + b_words > words_per_batch_target
+            )
+
+            should_split = len(current_batch) > 0 and (
+                reach_max_blocks or reach_word_ceiling or balanced_split
+            )
+
+            if should_split:
+                batches.append(current_batch)
+                current_batch = [block]
+                current_words = b_words
+            else:
+                current_batch.append(block)
+                current_words += b_words
+
+        if current_batch:
+            batches.append(current_batch)
+
+        return batches
+
+    def build_prompt_messages(self, batch: list[OcrBlockModel]) -> list[dict[str, str]]:
+        """
+        Tạo messages ChatML chuẩn cho mô hình Gemma-4-E2B theo kỹ thuật Prompt Engineering:
+        - Định danh Persona chuyên gia dịch thuật bài báo khoa học chuẩn quốc tế.
+        - Phân định rõ ràng Quy tắc Bảo tồn (Strict Invariants): mã [[BLK_XXXX]], LaTeX, HTML table.
+        - Chỉ dẫn ngữ phong học thuật chuẩn mực, súc tích, tự nhiên trong tiếng Việt.
+        - Đầu ra thuần Markdown bám sát từng khối, loại bỏ hoàn toàn lời dẫn / giải thích.
+        """
+        glossary_rules = build_system_instruction()
+
+        system_content = (
+            "Bạn là một chuyên gia dịch thuật bài báo khoa học chuẩn quốc tế, có kiến thức sâu rộng về Khoa học Máy tính, Trí tuệ Nhân tạo và Kỹ thuật.\n"
+            "Nhiệm vụ của bạn là dịch chính xác toàn bộ các khối văn bản học thuật từ tiếng Anh sang tiếng Việt học thuật chuẩn mực, lưu loát và tự nhiên.\n\n"
+            "### QUY TẮC BẮT BUỘC (STRICT INVARIANTS):\n"
+            "1. BẢO TOÀN ĐỊNH DANH KHỐI: Mỗi khối bắt đầu bằng định danh chính xác dạng [[BLK_XXXX]]. Giữ nguyên 100% tất cả các mã [[BLK_XXXX]] theo đúng thứ tự xuất hiện.\n"
+            "2. BẢO TOÀN CÔNG THỨC TOÁN HỌC: Giữ nguyên vẹn 100% mọi công thức LaTeX inline ($...$), display ($$...$$ hoặc \\[...\\]) và ký hiệu toán học. Tuyệt đối không dịch hoặc làm biến dạng công thức toán.\n"
+            "3. BẢO TOÀN CẤU TRÚC BẢNG & MÃ: Giữ nguyên cấu trúc bảng HTML (<table>, <tr>, <td>) hoặc bảng Markdown, mã nguồn, URL và số liệu đo đạc.\n"
+            "4. THUẬT NGỮ CHUYÊN NGÀNH: Dịch tự nhiên sang tiếng Việt chuyên ngành, nhưng giữ nguyên các thuật ngữ tiếng Anh chuẩn quốc tế phổ biến không cần dịch (ví dụ: Transformer, Attention, Self-Attention, Fine-tuning, Token, Embedding, Backbone, Loss function, Dataset, Benchmark, Bounding Box, v.v.).\n"
+            "5. ĐỊNH DẠNG ĐẦU RA: Chỉ trả về nội dung dịch dưới dạng Markdown bọc trong các mã [[BLK_XXXX]]. Tuyệt đối KHÔNG viết lời chào, lời mở đầu, giải thích hay kết luận.\n\n"
+            f"### HƯỚNG DẪN THUẬT NGỮ DỰ ÁN:\n{glossary_rules}"
+        )
+
+        user_content_lines = []
+        for b in batch:
+            text = (b.original_text or "").strip()
+            user_content_lines.append(f"[[{b.block_code}]]\n{text}")
+
+        user_content = "\n\n".join(user_content_lines)
+
+        return [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
+        ]
+
+    def build_single_fallback_messages(self, block: OcrBlockModel) -> list[dict[str, str]]:
+        """
+        Tạo messages Fallback cho 1 khối đơn lẻ khi batch trước đó bị sót.
+        """
+        system_content = (
+            "Bạn là chuyên gia dịch thuật bài báo khoa học. "
+            f"BẮT BUỘC: Dịch nội dung của khối [[{block.block_code}]] sang tiếng Việt học thuật lưu loát. "
+            f"Bắt đầu phản hồi bằng [[{block.block_code}]] kèm nội dung dịch. "
+            "Giữ nguyên 100% công thức LaTeX ($...$, $$...$$), bảng biểu và không thêm bất kỳ lời dẫn nào."
+        )
+        user_content = f"[[{block.block_code}]]\n{(block.original_text or '').strip()}"
+
+        return [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
+        ]
+
+    def parse_response(
+        self, response_text: str, expected_batch: list[OcrBlockModel]
+    ) -> tuple[dict[str, str], list[OcrBlockModel]]:
+        """
+        Bóc tách các mã khối [[BLK_XXXX]] từ phản hồi của mô hình.
+        Trả về:
+        - translated_map: {block_code: translated_text}
+        - missing_blocks: Danh sách các khối bị thiếu trong phản hồi để kích hoạt fallback.
+        """
+        translated_map: dict[str, str] = {}
+        for match in self.BLOCK_REGEX.finditer(response_text):
+            code = match.group(1).strip()
+            content = match.group(2).strip()
+            if content:
+                translated_map[code] = content
+
+        missing_blocks: list[OcrBlockModel] = []
+        for b in expected_batch:
+            if b.block_code not in translated_map or not translated_map[b.block_code].strip():
+                missing_blocks.append(b)
+
+        return translated_map, missing_blocks
