@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   CanvasData,
   CanvasPage,
@@ -33,80 +33,529 @@ interface CanvasPaperViewerProps {
 
 /**
  * Regex nhận diện các khối rác watermark của nhà xuất bản (IEEE, CVPR, arXiv...)
- * để không render lên trang Word bản dịch.
+ * để không render lên trang đọc 1 cột bản dịch.
  */
 const JUNK_WATERMARK_REGEX =
   /(?:^arxiv:\d{4}\.\d+|ieee\s+transactions|cvpr|iccv|neurips|icml|conference\s+on|authorized\s+licensed\s+use|downloaded\s+on.*utc|copyright\s+©|all\s+rights\s+reserved|^\d+\s*$)/i;
 
 /**
- * Ước lượng văn bản hiển thị thực tế (loại bỏ tên lệnh LaTeX dài như \operatorname, \mathcal)
- * để tính toán số ký tự trên dòng chính xác khi có công thức toán học.
+ * Regex nhận diện khối chú thích Hình (Figure / Fig. / Hình N)
  */
-function getVisualTextForSizing(text: string): string {
-  return text
-    .replace(/\\[a-zA-Z]+/g, 'M')
-    .replace(/[{}$_^]/g, '');
+const FIGURE_CAPTION_REGEX = /(?:^|\n)\s*(?:figure|fig\.|hình)\s*\d+\b/i;
+
+/**
+ * Regex nhận diện khối chú thích Bảng (Table / Bảng N)
+ */
+const TABLE_CAPTION_REGEX = /^\s*(?:table|bảng)\s*\d+\b/i;
+
+/**
+ * Cấu trúc một phần tử hiển thị trong luồng 1 cột tự giãn chiều dọc (Flowing Single-Column Reader)
+ */
+type FlowItem =
+  | {
+      type: 'prose';
+      key: string;
+      block: CanvasBlock;
+      displayText: string;
+      variant:
+        | 'paper_title'
+        | 'author_meta'
+        | 'section_header'
+        | 'equation'
+        | 'references'
+        | 'body';
+    }
+  | {
+      type: 'figure';
+      key: string;
+      cropBbox: [number, number, number, number];
+      captionBlock: CanvasBlock;
+      captionText: string;
+    }
+  | {
+      type: 'table';
+      key: string;
+      cropBbox: [number, number, number, number];
+      captionBlocks: CanvasBlock[];
+      captionText: string;
+      tableBlock: CanvasBlock;
+    };
+
+/**
+ * Kiểm tra một chuỗi văn bản có phải là phương trình toán học độc lập (display equation)
+ */
+function isStandaloneEquation(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (/^\(\d+\)$/.test(trimmed)) return true;
+  if (!trimmed.includes('$') && !trimmed.includes('\\')) return false;
+  const withoutMath = trimmed
+    .replace(/\$\$[\s\S]*?\$\$/g, '')
+    .replace(/\$[^$]*\$/g, '')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/\(\d+\)/g, '')
+    .replace(/[^a-zA-ZÀ-ỹ]/g, '');
+  return withoutMath.length < 8;
 }
 
 /**
- * Thuật toán Binary-Search Font Auto-Scaling:
- * Tìm cỡ chữ tối ưu để văn bản tiếng Việt nằm gọn trong Bounding Box gốc của khối OCR.
+ * Làm sạch tiền tố nhãn con (sub-labels như "Input\nRetinexFormer [3]\n") bị gộp nhầm vào trước "Hình N." / "Figure N."
  */
-export function calculateOptimalFontSize(
-  text: string,
-  boxWidth: number,
-  boxHeight: number,
-  minSize = 7.5,
-  maxSize = 12.5,
-  lineHeightRatio = 1.24
-): number {
-  if (!text || boxWidth <= 0 || boxHeight <= 0) return minSize;
+function cleanFigureCaptionText(text: string): string {
+  const match = text.match(/(?:^|\n)\s*((?:Figure|Fig\.|Hình)\s*\d+[\s\S]*)/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return text.trim();
+}
 
-  const visualText = getVisualTextForSizing(text);
-  const paragraphs = visualText.split(/\n+/).filter(Boolean);
-  if (paragraphs.length === 0) return minSize;
+/**
+ * Chuyển đổi danh sách các khối OCR của một trang thành luồng đọc 1 cột chuẩn học thuật:
+ * - Tự động ghép và cắt vùng Hình vẽ (Figure 1..N, bao gồm cả lưới nhiều ảnh con và sơ đồ vector) từ ảnh gốc 200 DPI.
+ * - Tự động ghép Chú thích Bảng (Table 1..N) với vùng ảnh Bảng số liệu chuẩn xác từ trang gốc.
+ * - Sắp xếp văn bản theo đúng thứ tự đọc (Tiêu đề đầu trang -> Cột Trái từ trên xuống dưới -> Cột Phải từ trên xuống dưới).
+ * - Loại bỏ triệt để hiện tượng đè chữ, cắt chữ khi văn bản tiếng Việt dài hơn tiếng Anh.
+ */
+function buildFlowItemsForPage(page: CanvasPage): FlowItem[] {
+  const rawBlocks = page.blocks || [];
+  const consumedIds = new Set<string>();
 
-  let low = minSize;
-  let high = maxSize;
-  let best = minSize;
-
-  for (let iter = 0; iter < 8; iter++) {
-    const mid = (low + high) / 2;
-    const charWidth = mid * 0.48;
-    const lineHeight = mid * lineHeightRatio;
-    const maxCharsPerLine = Math.max(1, Math.floor(boxWidth / charWidth));
-
-    let totalLines = 0;
-    for (const para of paragraphs) {
-      const words = para.split(/\s+/).filter(Boolean);
-      if (words.length === 0) continue;
-      let lines = 1;
-      let currentLineLength = 0;
-      for (const w of words) {
-        if (currentLineLength === 0) {
-          currentLineLength = w.length;
-        } else if (currentLineLength + 1 + w.length <= maxCharsPerLine) {
-          currentLineLength += 1 + w.length;
-        } else {
-          lines++;
-          currentLineLength = w.length;
-        }
-      }
-      totalLines += lines;
+  // 1. Đánh dấu bỏ qua các khối header/footer, watermark rác, hoặc ký hiệu đánh số phương trình rời rạc "(1)".."(9)"
+  for (const b of rawBlocks) {
+    const label = (b.label || '').toLowerCase();
+    const orig = (b.original_text || '').trim();
+    if (label === 'page header' || label === 'page footer') {
+      consumedIds.add(b.id);
+      continue;
     }
-
-    const totalHeight = totalLines * lineHeight;
-
-    if (totalHeight <= boxHeight * 1.04) {
-      best = mid;
-      low = mid + 0.25;
-    } else {
-      high = mid - 0.25;
+    if (orig.length < 250 && JUNK_WATERMARK_REGEX.test(orig)) {
+      consumedIds.add(b.id);
+      continue;
+    }
+    if (/^\(\d+\)$/.test(orig)) {
+      consumedIds.add(b.id);
+      continue;
     }
   }
 
-  return Math.max(minSize, Math.min(maxSize, Math.round(best * 10) / 10));
+  // 2. Nhận diện tất cả các khối Table số liệu thực sự và ghép với Caption Bảng đứng ngay trước nó
+  const tableGroups = new Map<
+    string,
+    {
+      captionBlocks: CanvasBlock[];
+      tableBlock: CanvasBlock;
+      cropBbox: [number, number, number, number];
+      anchorY: number;
+      colGroup: 'full' | 'left' | 'right';
+    }
+  >();
+
+  // Tìm các khối bắt đầu bằng "Table N." / "Bảng N."
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const b = rawBlocks[i];
+    if (consumedIds.has(b.id)) continue;
+    const orig = (b.original_text || '').trim();
+    const trans = (b.translated_text || '').trim();
+
+    if (TABLE_CAPTION_REGEX.test(orig) || TABLE_CAPTION_REGEX.test(trans)) {
+      const capBlocks: CanvasBlock[] = [b];
+      consumedIds.add(b.id);
+
+      let foundTableBlock: CanvasBlock | null = null;
+      let extraHeaderBlock: CanvasBlock | null = null;
+
+      // Duyệt các khối kế tiếp cùng cột để gom các dòng caption bị tách (như Table 3, Table 6, Table 7) và tìm khối [table]
+      const bCenterX = (b.bbox_norm[0] + b.bbox_norm[2]) / 2;
+      const bWidth = b.bbox_norm[2] - b.bbox_norm[0];
+
+      for (let j = i + 1; j < Math.min(rawBlocks.length, i + 6); j++) {
+        const cand = rawBlocks[j];
+        if (consumedIds.has(cand.id)) continue;
+        const candLabel = (cand.label || '').toLowerCase();
+        const candOrig = (cand.original_text || '').trim();
+        const candTrans = (cand.translated_text || '').trim();
+
+        // Dừng nếu gặp Table/Figure mới hoặc Section Header
+        if (
+          TABLE_CAPTION_REGEX.test(candOrig) ||
+          TABLE_CAPTION_REGEX.test(candTrans) ||
+          FIGURE_CAPTION_REGEX.test(candOrig) ||
+          FIGURE_CAPTION_REGEX.test(candTrans) ||
+          candLabel === 'section header'
+        ) {
+          break;
+        }
+
+        // Kiểm tra cùng vùng cột
+        const candCenterX = (cand.bbox_norm[0] + cand.bbox_norm[2]) / 2;
+        const sameColumn =
+          bWidth > 0.5 ||
+          (bCenterX < 0.5 && candCenterX < 0.5) ||
+          (bCenterX >= 0.5 && candCenterX >= 0.5);
+        if (!sameColumn) continue;
+
+        if (candLabel === 'table') {
+          foundTableBlock = cand;
+          consumedIds.add(cand.id);
+          break;
+        }
+
+        // Nếu là dòng header của bảng bị tách thành caption (ví dụ BLK_0157: "Params↓ (M) MACs↓ (G)...")
+        if (
+          candLabel === 'caption' &&
+          /(?:params|macs|psnr|ssim|lpips)/i.test(candOrig)
+        ) {
+          extraHeaderBlock = cand;
+          consumedIds.add(cand.id);
+          continue;
+        }
+
+        // Nếu là dòng tiếp nối của Table caption ngay sát bên dưới
+        const prevCap = capBlocks[capBlocks.length - 1];
+        if (
+          candLabel === 'caption' &&
+          cand.bbox_norm[1] - prevCap.bbox_norm[3] < 0.035
+        ) {
+          capBlocks.push(cand);
+          consumedIds.add(cand.id);
+        } else {
+          break;
+        }
+      }
+
+      if (foundTableBlock) {
+        const tx0 = Math.max(
+          0.07,
+          Math.min(
+            foundTableBlock.bbox_norm[0],
+            extraHeaderBlock ? extraHeaderBlock.bbox_norm[0] : 1
+          ) - 0.012
+        );
+        const ty0 = Math.max(
+          0.05,
+          Math.min(
+            foundTableBlock.bbox_norm[1],
+            extraHeaderBlock ? extraHeaderBlock.bbox_norm[1] : 1
+          ) - 0.008
+        );
+        const tx1 = Math.min(
+          0.93,
+          Math.max(
+            foundTableBlock.bbox_norm[2],
+            extraHeaderBlock ? extraHeaderBlock.bbox_norm[2] : 0
+          ) + 0.012
+        );
+        const ty1 = Math.min(0.95, foundTableBlock.bbox_norm[3] + 0.008);
+
+        const tableWidth = tx1 - tx0;
+        const tableCenterX = (tx0 + tx1) / 2;
+        const colGroup: 'full' | 'left' | 'right' =
+          tableWidth > 0.55 ? 'full' : tableCenterX < 0.5 ? 'left' : 'right';
+
+        tableGroups.set(b.id, {
+          captionBlocks: capBlocks,
+          tableBlock: foundTableBlock,
+          cropBbox: [tx0, ty0, tx1, ty1],
+          anchorY: b.bbox_norm[1],
+          colGroup,
+        });
+      } else {
+        // Nếu không tìm thấy khối table đi kèm, trả lại để hiển thị như khối văn bản thường
+        for (const cb of capBlocks) {
+          consumedIds.delete(cb.id);
+        }
+      }
+    }
+  }
+
+  // Tập hợp các khối thuộc về Table thực sự (để hỗ trợ tính ranh giới trên của Figure)
+  const realTableRelatedIds = new Set<string>();
+  tableGroups.forEach((grp) => {
+    grp.captionBlocks.forEach((cb) => realTableRelatedIds.add(cb.id));
+    realTableRelatedIds.add(grp.tableBlock.id);
+  });
+
+  // 3. Nhận diện tất cả các khối Chú thích Hình (Figure 1..N) và tính toán vùng cắt ảnh gốc [x0, y_top, x1, y_bottom]
+  const figureGroups = new Map<
+    string,
+    {
+      captionBlock: CanvasBlock;
+      cropBbox: [number, number, number, number];
+      anchorY: number;
+      colGroup: 'full' | 'left' | 'right';
+    }
+  >();
+
+  const figCapBlocks = rawBlocks
+    .filter((b) => {
+      if (consumedIds.has(b.id)) return false;
+      const orig = (b.original_text || '').trim();
+      const trans = (b.translated_text || '').trim();
+      return FIGURE_CAPTION_REGEX.test(orig) || FIGURE_CAPTION_REGEX.test(trans);
+    })
+    .sort((a, b) => a.bbox_norm[1] - b.bbox_norm[1]);
+
+  for (const capBlock of figCapBlocks) {
+    const orig = (capBlock.original_text || '').trim();
+    // Nếu caption bị gộp dòng sub-label phía trên (như BLK_0126 trang 7: "Input\nRetinexFormer [3]\nFigure 6..."),
+    // đẩy đáy vùng ảnh xuống một chút để bao trọn dòng nhãn con trên ảnh nhưng không cắt vào chữ "Figure 6."
+    const hasMergedSublabelPrefix =
+      !/^\s*(?:figure|fig\.|hình)\s*\d+/i.test(orig) &&
+      FIGURE_CAPTION_REGEX.test(orig);
+
+    const yBottom = hasMergedSublabelPrefix
+      ? Math.min(capBlock.bbox_norm[3], capBlock.bbox_norm[1] + 0.012)
+      : Math.max(0.08, capBlock.bbox_norm[1] - 0.004);
+
+    // Tìm ranh giới trên (yTop) của vùng hình vẽ: là đáy (y1) cao nhất của khối văn bản chính / tiêu đề / bảng / hình trước đó nằm phía trên capBlock
+    let yTop = 0.082;
+    for (const other of rawBlocks) {
+      if (other.id === capBlock.id) continue;
+      const otherLabel = (other.label || '').toLowerCase();
+      if (otherLabel === 'page header' || otherLabel === 'page footer') continue;
+
+      const otherY1 = other.bbox_norm[3];
+      if (otherY1 > capBlock.bbox_norm[1] - 0.015) continue;
+
+      const otherOrig = (other.original_text || '').trim();
+      const isPreviousFigCap = FIGURE_CAPTION_REGEX.test(otherOrig);
+      const isRealTablePart = realTableRelatedIds.has(other.id);
+      const isHeaderOrTitle =
+        otherLabel === 'title' ||
+        otherLabel === 'section header' ||
+        (page.page_number === 1 && other.bbox_norm[1] < 0.26);
+      const isLongProse =
+        otherLabel === 'text' && otherOrig.length > 140 && !isPreviousFigCap;
+
+      if (
+        isPreviousFigCap ||
+        isRealTablePart ||
+        isHeaderOrTitle ||
+        isLongProse
+      ) {
+        if (otherY1 + 0.008 > yTop) {
+          yTop = otherY1 + 0.008;
+        }
+      }
+    }
+
+    if (yBottom - yTop >= 0.06) {
+      const fx0 = 0.085;
+      const fx1 = 0.915;
+      const capWidth = capBlock.bbox_norm[2] - capBlock.bbox_norm[0];
+      const capCenterX = (capBlock.bbox_norm[0] + capBlock.bbox_norm[2]) / 2;
+      const colGroup: 'full' | 'left' | 'right' =
+        capWidth > 0.45 ? 'full' : capCenterX < 0.5 ? 'left' : 'right';
+
+      figureGroups.set(capBlock.id, {
+        captionBlock: capBlock,
+        cropBbox: [fx0, yTop, fx1, yBottom],
+        anchorY: yTop,
+        colGroup,
+      });
+      consumedIds.add(capBlock.id);
+
+      // Mọi khối figure hoặc nhãn con OCR nằm bên trong vùng [yTop, yBottom + 0.015] đã có mặt trong ảnh crop nên đánh dấu đã tiêu thụ
+      for (const inner of rawBlocks) {
+        if (consumedIds.has(inner.id) || realTableRelatedIds.has(inner.id)) {
+          continue;
+        }
+        const midY = (inner.bbox_norm[1] + inner.bbox_norm[3]) / 2;
+        if (midY >= yTop - 0.01 && midY <= yBottom + 0.015) {
+          consumedIds.add(inner.id);
+        }
+      }
+    }
+  }
+
+  // 4. Gom tất cả các phần tử (Figure, Table, và các khối văn bản còn lại) kèm thông tin phân nhóm cột để sắp xếp đúng luồng đọc 1 cột
+  interface SortableEntry {
+    colGroup: 'full_top' | 'left' | 'right' | 'full_bottom';
+    sortY: number;
+    item: FlowItem;
+  }
+
+  const entries: SortableEntry[] = [];
+
+  // Thêm các nhóm Figure
+  figureGroups.forEach((fg) => {
+    const rawCaption =
+      (fg.captionBlock.translated_text || '').trim() ||
+      (fg.captionBlock.original_text || '').trim();
+    const cleanedCaption = cleanFigureCaptionText(rawCaption);
+
+    const colGroup =
+      fg.colGroup === 'full'
+        ? fg.anchorY < 0.65
+          ? 'full_top'
+          : 'full_bottom'
+        : fg.colGroup;
+
+    entries.push({
+      colGroup,
+      sortY: fg.anchorY,
+      item: {
+        type: 'figure',
+        key: `fig-${fg.captionBlock.id}`,
+        cropBbox: fg.cropBbox,
+        captionBlock: fg.captionBlock,
+        captionText: cleanedCaption,
+      },
+    });
+  });
+
+  // Thêm các nhóm Table
+  tableGroups.forEach((tg) => {
+    const captionText = tg.captionBlocks
+      .map((cb) => (cb.translated_text || '').trim() || (cb.original_text || '').trim())
+      .filter(Boolean)
+      .join(' ');
+
+    const colGroup =
+      tg.colGroup === 'full'
+        ? tg.anchorY < 0.65
+          ? 'full_top'
+          : 'full_bottom'
+        : tg.colGroup;
+
+    entries.push({
+      colGroup,
+      sortY: tg.anchorY,
+      item: {
+        type: 'table',
+        key: `tbl-${tg.tableBlock.id}`,
+        cropBbox: tg.cropBbox,
+        captionBlocks: tg.captionBlocks,
+        captionText,
+        tableBlock: tg.tableBlock,
+      },
+    });
+  });
+
+  // Thêm các khối văn bản (prose) chưa bị tiêu thụ
+  for (const b of rawBlocks) {
+    if (consumedIds.has(b.id)) continue;
+    const label = (b.label || '').toLowerCase();
+    if (label === 'figure' || label === 'figure_text') continue;
+
+    const orig = (b.original_text || '').trim();
+    const trans = (b.translated_text || '').trim();
+    const displayText = trans || orig;
+    if (!displayText) continue;
+
+    const [x0, y0, x1] = b.bbox_norm;
+    const width = x1 - x0;
+    const centerX = (x0 + x1) / 2;
+
+    // Phân loại ngữ nghĩa hiển thị
+    const isPaperTitle =
+      label === 'title' || (page.page_number === 1 && b.block_code === 'BLK_0002');
+    const isAuthorMeta =
+      page.page_number === 1 && !isPaperTitle && y0 < 0.265;
+    const isReferences =
+      !b.is_translatable &&
+      (page.page_number >= 9 || /^references\b/i.test(orig) || /^\[\d+\]/.test(orig));
+    const isEq = isStandaloneEquation(orig);
+    const isSecHeader =
+      !isPaperTitle &&
+      !isAuthorMeta &&
+      !isEq &&
+      (label === 'section header' || label === 'heading');
+
+    let variant:
+      | 'paper_title'
+      | 'author_meta'
+      | 'section_header'
+      | 'equation'
+      | 'references'
+      | 'body' = 'body';
+
+    if (isPaperTitle) variant = 'paper_title';
+    else if (isAuthorMeta) variant = 'author_meta';
+    else if (isSecHeader) variant = 'section_header';
+    else if (isEq) variant = 'equation';
+    else if (isReferences) variant = 'references';
+
+    let colGroup: 'full_top' | 'left' | 'right' | 'full_bottom' = 'left';
+    if (isPaperTitle || isAuthorMeta || (width > 0.55 && y0 < 0.65)) {
+      colGroup = 'full_top';
+    } else if (width > 0.55) {
+      colGroup = 'full_bottom';
+    } else if (centerX < 0.5) {
+      colGroup = 'left';
+    } else {
+      colGroup = 'right';
+    }
+
+    entries.push({
+      colGroup,
+      sortY: y0,
+      item: {
+        type: 'prose',
+        key: b.id,
+        block: b,
+        displayText,
+        variant,
+      },
+    });
+  }
+
+  // Sắp xếp theo thứ tự: Khối tràn ngang đầu trang (full_top) -> Cột Trái (left) -> Cột Phải (right) -> Khối tràn ngang cuối trang (full_bottom)
+  const groupPriority: Record<SortableEntry['colGroup'], number> = {
+    full_top: 1,
+    left: 2,
+    right: 3,
+    full_bottom: 4,
+  };
+
+  entries.sort((a, b) => {
+    const pDiff = groupPriority[a.colGroup] - groupPriority[b.colGroup];
+    if (pDiff !== 0) return pDiff;
+    return a.sortY - b.sortY;
+  });
+
+  return entries.map((e) => e.item);
 }
+
+/**
+ * Component cắt một vùng hình chữ nhật [x0, y0, x1, y1] chuẩn xác từ ảnh trang gốc 200 DPI
+ * bằng SVG viewBox — giữ nguyên 100% độ nét của sơ đồ vector, lưới nhiều ảnh con và bảng số liệu.
+ */
+const CroppedPageRegion: React.FC<{
+  pageImageUrl: string;
+  pageWidthPt: number;
+  pageHeightPt: number;
+  cropBbox: [number, number, number, number];
+  altText: string;
+}> = ({ pageImageUrl, pageWidthPt, pageHeightPt, cropBbox, altText }) => {
+  const W = pageWidthPt > 0 ? pageWidthPt : 612;
+  const H = pageHeightPt > 0 ? pageHeightPt : 792;
+  const [x0, y0, x1, y1] = cropBbox;
+  const vx = Math.max(0, x0 * W);
+  const vy = Math.max(0, y0 * H);
+  const vw = Math.max(10, (x1 - x0) * W);
+  const vh = Math.max(10, (y1 - y0) * H);
+
+  return (
+    <div className="w-full overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-2xs">
+      <svg
+        viewBox={`${vx} ${vy} ${vw} ${vh}`}
+        className="w-full h-auto block mx-auto"
+        role="img"
+        aria-label={altText}
+      >
+        <image
+          href={pageImageUrl}
+          x={0}
+          y={0}
+          width={W}
+          height={H}
+          preserveAspectRatio="none"
+        />
+      </svg>
+    </div>
+  );
+};
 
 export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   canvasData,
@@ -121,15 +570,27 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [isEditingModalOpen, setIsEditingModalOpen] = useState<boolean>(false);
+  const [layoutVersion, setLayoutVersion] = useState<number>(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const totalPages = canvasData.pages.length;
 
-  // Chiều rộng cơ sở hiển thị (A4: 820px)
+  // Chiều rộng cơ sở hiển thị (820px ở mức zoom 100%)
   const baseWidth = 820;
   const displayWidth = Math.round((baseWidth * zoomLevel) / 100);
+  const zoomScale = displayWidth / baseWidth;
+
+  // Tính toán trước danh sách phần tử luồng 1 cột cho tất cả các trang
+  const flowItemsByPage = useMemo(() => {
+    const map = new Map<number, FlowItem[]>();
+    for (const page of canvasData.pages) {
+      map.set(page.page_number, buildFlowItemsForPage(page));
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasData.pages, layoutVersion]);
 
   // Theo dõi vị trí cuộn để cập nhật trang hiện tại qua IntersectionObserver
   useEffect(() => {
@@ -146,7 +607,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
       },
       {
         root: containerRef.current,
-        threshold: 0.35,
+        threshold: 0.2,
       }
     );
 
@@ -214,6 +675,8 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
       }
     }
 
+    setLayoutVersion((v) => v + 1);
+
     if (onBlockUpdated) {
       onBlockUpdated(updated);
     }
@@ -245,223 +708,158 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   };
 
   /**
-   * Kiểm tra một khối có phải là phương trình toán học độc lập hoặc ký hiệu đánh số phương trình (1)..(9)
-   * để giữ nguyên bản vẽ vector sắc nét từ Layer 0.
+   * Mở modal chỉnh sửa một khối văn bản hoặc chú thích
    */
-  const isPureEquationOrSymbol = (text: string): boolean => {
-    const trimmed = text.trim();
-    if (!trimmed) return true;
-    if (/^\(\d+\)$/.test(trimmed)) return true;
-    // Bỏ hết các đoạn trong $...$ hoặc $$...$$ xem còn chữ cái thông thường không
-    const withoutMath = trimmed
-      .replace(/\$\$[\s\S]*?\$\$/g, '')
-      .replace(/\$[^$]*\$/g, '')
-      .replace(/\\[a-zA-Z]+/g, '')
-      .replace(/[^a-zA-ZÀ-ỹ]/g, '');
-    return withoutMath.length < 4;
+  const openEditModal = (block: CanvasBlock) => {
+    setActiveBlock(block);
+    setIsEditingModalOpen(true);
   };
 
   /**
-   * Render Lớp Phủ Dịch Thuật (Layer 1 Smart Whiteout + Layer 2 Vietnamese Text & KaTeX)
-   * trên nền ảnh gốc Layer 0 (200 DPI):
-   * - Giữ nguyên 100% hình vẽ (figure), sơ đồ vector (TikZ/diagrams), bảng số liệu (table),
-   *   phương trình độc lập, References và các nhãn con nằm đè lên vùng ảnh.
-   * - Chỉ phủ trắng (#FFFFFF) và vẽ đè văn bản tiếng Việt lên đúng tọa độ chuẩn hóa [0..1]
-   *   của các khối văn bản đã dịch.
+   * Render một phần tử trong trang đọc 1 cột tự giãn chiều dọc (Flowing Single-Column Reader)
    */
-  const renderOverlayBlock = (
-    block: CanvasBlock,
-    page: CanvasPage,
-    pWidth: number,
-    pHeight: number
-  ) => {
-    const [x0, y0, x1, y1] = block.bbox_norm;
-    if (x1 <= x0 || y1 <= y0) return null;
+  const renderFlowItem = (item: FlowItem, page: CanvasPage) => {
+    if (item.type === 'figure') {
+      const isHovered = hoveredBlockId === item.captionBlock.id;
+      return (
+        <figure
+          key={item.key}
+          className="my-5 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col gap-3"
+        >
+          <CroppedPageRegion
+            pageImageUrl={page.page_image_url}
+            pageWidthPt={page.width_pt}
+            pageHeightPt={page.height_pt}
+            cropBbox={item.cropBbox}
+            altText={`Hình minh họa trang ${page.page_number}`}
+          />
 
-    const label = (block.label || '').toLowerCase();
-    const origText = (block.original_text || '').trim();
-    const transText = (block.translated_text || '').trim();
-
-    // 1. Giữ nguyên Layer 0 cho hình ảnh, bảng biểu, header/footer và khối không dịch
-    if (
-      label === 'figure' ||
-      label === 'figure_text' ||
-      label === 'table' ||
-      label === 'page header' ||
-      label === 'page footer' ||
-      !block.is_translatable
-    ) {
-      return null;
+          <figcaption
+            className={`relative rounded-lg px-2.5 py-1.5 font-serif text-slate-700 text-justify cursor-pointer transition-colors select-text ${
+              isHovered ? 'bg-blue-50/70 ring-1 ring-academic-navy/40' : 'hover:bg-slate-100/80'
+            }`}
+            style={{
+              fontSize: `${Math.round(13.5 * zoomScale * 10) / 10}px`,
+              lineHeight: 1.6,
+            }}
+            onMouseEnter={() => setHoveredBlockId(item.captionBlock.id)}
+            onMouseLeave={() => setHoveredBlockId(null)}
+            onClick={() => openEditModal(item.captionBlock)}
+          >
+            {isHovered && (
+              <span className="absolute -top-4 right-2 flex items-center gap-1 bg-academic-navy text-white px-2 py-0.5 rounded text-[10px] font-sans shadow-sm z-10">
+                <Edit3 className="w-2.5 h-2.5" />
+                <span>Sửa chú thích ({item.captionBlock.block_code})</span>
+              </span>
+            )}
+            <MathRenderer text={item.captionText} />
+          </figcaption>
+        </figure>
+      );
     }
 
-    // 2. Bỏ qua watermark rác
-    if (origText.length < 250 && JUNK_WATERMARK_REGEX.test(origText)) {
-      return null;
-    }
-
-    // 3. Kiểm tra nếu khối văn bản ngắn nằm đè lên vùng hình vẽ (Figure Union) của trang
-    // (Trừ khi là chú thích chính bắt đầu bằng Figure / Fig. / Hình / Table / Bảng)
-    const isMainCaption = /^(?:figure|fig\.|hình|table|bảng)\s*\d+/i.test(origText) || /^(?:figure|fig\.|hình|table|bảng)\s*\d+/i.test(transText);
-    if (!isMainCaption && origText.length < 140) {
-      const figBlocks = page.blocks.filter((b) => (b.label || '').toLowerCase() === 'figure');
-      if (figBlocks.length > 0) {
-        const ux0 = Math.min(...figBlocks.map((b) => b.bbox_norm[0]));
-        const uy0 = Math.min(...figBlocks.map((b) => b.bbox_norm[1]));
-        const ux1 = Math.max(...figBlocks.map((b) => b.bbox_norm[2]));
-        const uy1 = Math.max(...figBlocks.map((b) => b.bbox_norm[3]));
-        const overlapsFigureUnion =
-          x0 < ux1 + 0.01 &&
-          x1 > ux0 - 0.01 &&
-          y0 < uy1 + 0.025 &&
-          y1 > uy0 - 0.015;
-        if (overlapsFigureUnion) {
-          return null;
-        }
-      }
-    }
-
-    // 4. Giữ nguyên Layer 0 cho phương trình toán học độc lập hoặc khối không thay đổi nội dung (tên tác giả, affiliation...)
-    const hasDistinctTranslation =
-      Boolean(transText) && (block.is_user_edited || transText !== origText);
-    if (!block.is_user_edited && isPureEquationOrSymbol(origText)) {
-      return null;
-    }
-
-    const zoomScale = pWidth / baseWidth;
-    const boxWidthPx = (x1 - x0) * pWidth;
-    const boxHeightPx = (y1 - y0) * pHeight;
-    const isHovered = hoveredBlockId === block.id;
-
-    // Nếu chưa có bản dịch khác biệt: chỉ hiển thị vùng tương tác trong suốt để click sửa khi cần
-    if (!hasDistinctTranslation) {
+    if (item.type === 'table') {
+      const primaryCapBlock = item.captionBlocks[0] || item.tableBlock;
+      const isHovered = hoveredBlockId === primaryCapBlock.id;
       return (
         <div
-          key={block.id}
-          style={{
-            position: 'absolute',
-            left: `${x0 * 100}%`,
-            top: `${y0 * 100}%`,
-            width: `${(x1 - x0) * 100}%`,
-            height: `${(y1 - y0) * 100}%`,
-          }}
-          className="pointer-events-auto cursor-pointer group"
-          onMouseEnter={() => setHoveredBlockId(block.id)}
-          onMouseLeave={() => setHoveredBlockId(null)}
-          onClick={() => {
-            setActiveBlock(block);
-            setIsEditingModalOpen(true);
-          }}
+          key={item.key}
+          className="my-5 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 flex flex-col gap-2.5"
         >
-          {isHovered && (
-            <div className="absolute -inset-0.5 rounded-xs border border-academic-navy/50 bg-blue-500/5 z-20">
-              <div className="absolute -top-5 right-0 flex items-center gap-1 bg-academic-navy text-white px-1.5 py-0.5 rounded text-[9px] font-sans shadow-md">
-                <Edit3 className="w-2.5 h-2.5" />
-                <span>Sửa ({block.block_code})</span>
-              </div>
+          {/* Chú thích Bảng ở phía trên bảng theo chuẩn bài báo khoa học */}
+          {item.captionText && (
+            <div
+              className={`relative rounded-lg px-2.5 py-1.5 font-serif text-slate-800 font-medium text-justify cursor-pointer transition-colors select-text ${
+                isHovered ? 'bg-blue-50/70 ring-1 ring-academic-navy/40' : 'hover:bg-slate-100/80'
+              }`}
+              style={{
+                fontSize: `${Math.round(13.5 * zoomScale * 10) / 10}px`,
+                lineHeight: 1.55,
+              }}
+              onMouseEnter={() => setHoveredBlockId(primaryCapBlock.id)}
+              onMouseLeave={() => setHoveredBlockId(null)}
+              onClick={() => openEditModal(primaryCapBlock)}
+            >
+              {isHovered && (
+                <span className="absolute -top-4 right-2 flex items-center gap-1 bg-academic-navy text-white px-2 py-0.5 rounded text-[10px] font-sans shadow-sm z-10">
+                  <Edit3 className="w-2.5 h-2.5" />
+                  <span>Sửa tiêu đề bảng ({primaryCapBlock.block_code})</span>
+                </span>
+              )}
+              <MathRenderer text={item.captionText} />
             </div>
           )}
+
+          {/* Ảnh cắt Bảng số liệu sắc nét từ trang gốc */}
+          <CroppedPageRegion
+            pageImageUrl={page.page_image_url}
+            pageWidthPt={page.width_pt}
+            pageHeightPt={page.height_pt}
+            cropBbox={item.cropBbox}
+            altText={`Bảng số liệu trang ${page.page_number}`}
+          />
         </div>
       );
     }
 
-    // Phân loại kiểu hiển thị theo nhãn ngữ nghĩa
-    const isPaperTitle =
-      label === 'title' || (page.page_number === 1 && block.block_code === 'BLK_0002');
-    const isSectionHeader =
-      !isPaperTitle && (label === 'section header' || label === 'heading');
-    const isCaption = label === 'caption' || isMainCaption;
+    // Khối văn bản học thuật (Prose: Title, Author Meta, Section Header, Body, Equation, References)
+    const { block, displayText, variant } = item;
+    const isHovered = hoveredBlockId === block.id;
 
-    let minFont = 7.4 * zoomScale;
-    let maxFont = 11.6 * zoomScale;
-    let lineHeightRatio = 1.24;
+    let fontSizePx = 15.0 * zoomScale;
+    let lineHeight = 1.68;
+    let blockClass = 'text-slate-800 text-justify my-2.5';
 
-    if (isPaperTitle) {
-      minFont = 11.0 * zoomScale;
-      maxFont = 18.5 * zoomScale;
-      lineHeightRatio = 1.18;
-    } else if (isSectionHeader) {
-      minFont = 9.0 * zoomScale;
-      maxFont = 13.0 * zoomScale;
-      lineHeightRatio = 1.18;
-    } else if (isCaption) {
-      minFont = 7.2 * zoomScale;
-      maxFont = 10.2 * zoomScale;
-      lineHeightRatio = 1.22;
+    if (variant === 'paper_title') {
+      fontSizePx = 22.0 * zoomScale;
+      lineHeight = 1.32;
+      blockClass = 'font-bold text-slate-900 text-center mt-2 mb-3 tracking-tight';
+    } else if (variant === 'author_meta') {
+      fontSizePx = 13.0 * zoomScale;
+      lineHeight = 1.45;
+      blockClass = 'text-slate-600 text-center my-0.5';
+    } else if (variant === 'section_header') {
+      fontSizePx = 17.5 * zoomScale;
+      lineHeight = 1.4;
+      blockClass =
+        'font-bold text-academic-navy text-left mt-5 mb-2 pb-1 border-b border-slate-200/80';
+    } else if (variant === 'equation') {
+      fontSizePx = 15.0 * zoomScale;
+      lineHeight = 1.6;
+      blockClass =
+        'text-slate-900 text-center my-3 py-2.5 px-4 bg-slate-50/80 rounded-lg border border-slate-200/60 overflow-x-auto';
+    } else if (variant === 'references') {
+      fontSizePx = 12.5 * zoomScale;
+      lineHeight = 1.55;
+      blockClass = 'text-slate-700 text-left my-2 whitespace-pre-line';
     }
-
-    const optimalFontSize = calculateOptimalFontSize(
-      transText,
-      boxWidthPx,
-      boxHeightPx,
-      minFont,
-      maxFont,
-      lineHeightRatio
-    );
-
-    const isShortSingleLine = boxHeightPx < 24 * zoomScale;
 
     return (
       <div
-        key={block.id}
-        style={{
-          position: 'absolute',
-          left: `${x0 * 100}%`,
-          top: `${y0 * 100}%`,
-          width: `${(x1 - x0) * 100}%`,
-          height: `${(y1 - y0) * 100}%`,
-        }}
-        className={`pointer-events-auto transition-all group select-text cursor-pointer ${
-          isShortSingleLine ? 'overflow-visible' : 'overflow-hidden'
+        key={item.key}
+        className={`relative rounded-lg px-2.5 py-1 font-serif transition-colors cursor-pointer select-text ${blockClass} ${
+          isHovered ? 'bg-blue-50/60 ring-1 ring-academic-navy/40' : 'hover:bg-slate-50/90'
         }`}
+        style={{
+          fontSize: `${Math.round(fontSizePx * 10) / 10}px`,
+          lineHeight,
+        }}
         onMouseEnter={() => setHoveredBlockId(block.id)}
         onMouseLeave={() => setHoveredBlockId(null)}
-        onClick={() => {
-          setActiveBlock(block);
-          setIsEditingModalOpen(true);
-        }}
+        onClick={() => openEditModal(block)}
       >
-        {/* Layer 1: Smart Whiteout (#FFFFFF) xóa sạch chữ tiếng Anh gốc bên dưới */}
-        <div className="absolute -inset-x-[2px] -inset-y-[1.5px] bg-white pointer-events-none z-0" />
+        {isHovered && (
+          <span className="absolute -top-4 right-2 flex items-center gap-1 bg-academic-navy text-white px-2 py-0.5 rounded text-[10px] font-sans shadow-sm z-10">
+            <Edit3 className="w-2.5 h-2.5" />
+            <span>Sửa ({block.block_code})</span>
+          </span>
+        )}
 
-        {/* Khung viền hover & Nút sửa nhanh */}
-        <div
-          className={`absolute -inset-0.5 rounded-xs transition-opacity z-20 pointer-events-none ${
-            isHovered
-              ? 'border border-academic-navy/60 bg-blue-500/5 shadow-2xs'
-              : 'border-transparent'
-          }`}
-        >
-          {isHovered && (
-            <div className="absolute -top-5 right-0 flex items-center gap-1 bg-academic-navy text-white px-1.5 py-0.5 rounded text-[9px] font-sans shadow-md animate-in fade-in duration-100">
-              <Edit3 className="w-2.5 h-2.5" />
-              <span>Sửa ({block.block_code})</span>
-            </div>
-          )}
-        </div>
+        <MathRenderer text={displayText} />
 
-        {/* Layer 2: Văn bản tiếng Việt học thuật + KaTeX */}
-        <div
-          className={`relative z-10 w-full h-full font-serif text-slate-900 flex flex-col ${
-            isPaperTitle
-              ? 'font-bold text-center items-center justify-center tracking-tight'
-              : isSectionHeader
-              ? 'font-bold text-left justify-center'
-              : isCaption
-              ? 'text-slate-800 text-justify justify-start'
-              : 'text-justify justify-start'
-          }`}
-          style={{
-            fontSize: `${optimalFontSize}px`,
-            lineHeight: `${lineHeightRatio}`,
-          }}
-        >
-          <MathRenderer text={transText} />
-        </div>
-
-        {/* Huy hiệu đánh dấu khối đã sửa thủ công */}
         {block.is_user_edited && (
-          <div
-            className="absolute bottom-0.5 right-0.5 z-20 w-2 h-2 rounded-full bg-emerald-500"
+          <span
+            className="inline-block ml-1.5 w-2 h-2 rounded-full bg-emerald-500 align-middle"
             title="Khối đã hiệu đính thủ công"
           />
         )}
@@ -470,12 +868,16 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
   };
 
   /**
-   * Render 1 Trang Đơn Lẻ trong chuỗi liên tục (3-Layer HTML Canvas)
+   * Render 1 Trang trong chuỗi cuộn liên tục:
+   * - Chế độ TRANSLATED / SIDE_BY_SIDE: Trình bày 1 cột tự giãn chiều dọc (Flowing Single-Column Reader)
+   *   đảm bảo không bao giờ mất chữ, đè chữ tiếng Việt, đồng thời giữ nguyên 100% ảnh và bảng biểu.
+   * - Chế độ ORIGINAL: Hiển thị ảnh scan trang gốc.
    */
   const renderSinglePage = (page: CanvasPage) => {
     const aspectRatio =
       page.width_pt > 0 ? page.height_pt / page.width_pt : 1.414;
-    const pageHeight = Math.round(displayWidth * aspectRatio);
+    const minPageHeight = Math.round(displayWidth * aspectRatio);
+    const flowItems = flowItemsByPage.get(page.page_number) || [];
 
     return (
       <div
@@ -486,23 +888,23 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
         }}
         data-page-number={page.page_number}
         id={`paper-page-${page.page_number}`}
-        className="scroll-mt-20 flex flex-col items-center"
+        className="scroll-mt-20 flex flex-col items-center w-full"
       >
         <div
           className={`flex items-start gap-8 transition-all duration-200 ${
             viewMode === 'SIDE_BY_SIDE' ? 'flex-row justify-center max-w-full' : 'justify-center'
           }`}
         >
-          {/* Cột Trái: Ảnh Scan Trang Gốc (Chỉ hiển thị ở chế độ SIDE_BY_SIDE) */}
+          {/* Cột Trái: Ảnh Scan Trang Gốc (Neo sticky khi cuộn đối chiếu ở chế độ SIDE_BY_SIDE) */}
           {viewMode === 'SIDE_BY_SIDE' && (
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center sticky top-6 self-start">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-slate-400" />
                 Bản gốc tiếng Anh (Trang {page.page_number})
               </div>
               <div
                 className="relative bg-white shadow-paper rounded-xs overflow-hidden border border-slate-300"
-                style={{ width: `${displayWidth}px`, height: `${pageHeight}px` }}
+                style={{ width: `${displayWidth}px`, height: `${minPageHeight}px` }}
               >
                 <img
                   src={page.page_image_url}
@@ -519,15 +921,15 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
             {viewMode === 'SIDE_BY_SIDE' && (
               <div className="text-[11px] font-semibold uppercase tracking-wider text-academic-navy mb-2 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-academic-gold" />
-                Bản dịch tiếng Việt (Trang {page.page_number})
+                Bản dịch tiếng Việt — 1 Cột Đầy Đủ (Trang {page.page_number})
               </div>
             )}
 
-            {/* Chế độ ORIGINAL: Chỉ hiển thị ảnh scan gốc Layer 0 */}
+            {/* Chế độ ORIGINAL: Chỉ hiển thị ảnh scan gốc */}
             {viewMode === 'ORIGINAL' ? (
               <div
                 className="relative bg-white shadow-paper rounded-xs overflow-hidden border border-slate-300"
-                style={{ width: `${displayWidth}px`, height: `${pageHeight}px` }}
+                style={{ width: `${displayWidth}px`, height: `${minPageHeight}px` }}
               >
                 <img
                   src={page.page_image_url}
@@ -537,24 +939,35 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
                 />
               </div>
             ) : (
-              /* Chế độ TRANSLATED / SIDE_BY_SIDE: 3-Layer HTML Canvas (Layer 0 Base Page + Layer 1 Whiteout + Layer 2 VI Text) */
-              <div
-                className="relative bg-white shadow-paper hover:shadow-paper-hover transition-shadow rounded-xs border border-slate-300 overflow-hidden"
-                style={{ width: `${displayWidth}px`, height: `${pageHeight}px` }}
+              /* Chế độ TRANSLATED / SIDE_BY_SIDE: Trang Đọc Học Thuật 1 Cột Tự Giãn Chiều Dọc */
+              <article
+                className="relative bg-white shadow-paper hover:shadow-paper-hover transition-shadow rounded-xs border border-slate-300 flex flex-col justify-between"
+                style={{
+                  width: `${displayWidth}px`,
+                  minHeight: `${minPageHeight}px`,
+                  padding: `${Math.round(36 * zoomScale)}px ${Math.round(44 * zoomScale)}px`,
+                }}
               >
-                {/* Layer 0: Ảnh nền trang gốc 200 DPI bảo toàn 100% sơ đồ, hình ảnh, bảng biểu */}
-                <img
-                  src={page.page_image_url}
-                  alt={`Trang ${page.page_number}`}
-                  className="absolute inset-0 w-full h-full object-fill block pointer-events-none select-none"
-                  loading="lazy"
-                />
-
-                {/* Layer 1 + Layer 2: Khối phủ trắng & Bản dịch tiếng Việt định vị tuyệt đối [0..1] */}
-                <div className="absolute inset-0">
-                  {page.blocks.map((b) => renderOverlayBlock(b, page, displayWidth, pageHeight))}
+                {/* Header nhỏ đánh dấu số trang của tài liệu */}
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3 text-[11px] font-sans text-slate-400">
+                  <span className="truncate max-w-[75%] font-medium">
+                    {canvasData.title || 'Bản dịch Bài báo Khoa học'}
+                  </span>
+                  <span className="font-mono font-semibold text-slate-500">
+                    Trang {page.page_number} / {totalPages}
+                  </span>
                 </div>
-              </div>
+
+                {/* Nội dung 1 cột tự giãn theo luồng đọc */}
+                <div className="flex-1 flex flex-col">
+                  {flowItems.map((item) => renderFlowItem(item, page))}
+                </div>
+
+                {/* Footer số trang */}
+                <div className="mt-6 pt-3 border-t border-slate-100 text-center text-[11px] font-mono text-slate-400">
+                  — {page.page_number} —
+                </div>
+              </article>
             )}
           </div>
         </div>
@@ -575,10 +988,10 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
                 ? 'bg-academic-navy text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
-            title="Tái hiện bản dịch trên trang Word trắng sạch, không lem chữ"
+            title="Trình bày 1 cột tự giãn chiều dọc, hiển thị trọn vẹn 100% văn bản tiếng Việt, hình ảnh và bảng biểu"
           >
             <Languages className="w-3.5 h-3.5" />
-            <span>Bản dịch (Word)</span>
+            <span>Bản dịch (1 Cột)</span>
           </button>
 
           <button
@@ -588,7 +1001,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
                 ? 'bg-academic-navy text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
-            title="Đối chiếu song song: Gốc bên trái, Bản dịch Word bên phải"
+            title="Đối chiếu song song: Gốc bên trái, Bản dịch 1 cột bên phải"
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Song song</span>
@@ -666,7 +1079,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
             onClick={handleExportPdf}
             disabled={isExportingPdf}
             className="px-3.5 py-2 bg-academic-navy hover:bg-academic-navy-dark active:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
-            title="Tải về tệp PDF bản dịch giữ nguyên bố cục"
+            title="Tải về tệp PDF bản dịch"
           >
             {isExportingPdf ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -688,7 +1101,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
         </div>
       </div>
 
-      {/* Continuous Vertical Scroll Document Stage (Cuộn Dọc Mượt Mà Như Landing Page) */}
+      {/* Continuous Vertical Scroll Document Stage */}
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto canvas-stage-grid p-6 scroll-smooth"
@@ -696,7 +1109,7 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
         {totalPages === 0 ? (
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-md shadow-xs mx-auto my-12">
             <Loader2 className="w-8 h-8 text-academic-navy animate-spin mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-800">Đang chuẩn bị trang Canvas...</h3>
+            <h3 className="text-sm font-bold text-slate-800">Đang chuẩn bị trang đọc...</h3>
             <p className="text-xs text-slate-500 mt-1">
               Hệ thống đang tải bố cục tài liệu và ảnh minh họa.
             </p>
