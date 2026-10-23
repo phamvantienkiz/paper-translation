@@ -52,7 +52,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Đang đóng các kết nối cơ sở dữ liệu và thu hồi tài nguyên...")
+    from app.services.translation.llama_server_manager import LlamaServerManager
     from app.services.translation.llama_service import LlamaCppService
+    LlamaServerManager.reset()
     LlamaCppService.reset()
     await engine.dispose()
     logger.info("Hệ thống đã dừng an toàn.")

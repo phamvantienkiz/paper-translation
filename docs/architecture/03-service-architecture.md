@@ -2,36 +2,37 @@
 
 **Tầng tài liệu**: Architecture Layer (Single Source of Truth)  
 **Hệ thống**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 3.1 (Reviewed & Hardened — Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas)  
-**Ngày cập nhật**: 2026-10-22  
+**Phiên bản**: 3.3 (Indra OCR, Standalone Llama.cpp Server + Gemma-4-E2B & 3-Layer HTML Canvas)  
+**Ngày cập nhật**: 2026-10-23  
 **Trạng thái**: Approved  
 
 ---
 
-## 1. Chiến lược Phân rã Dịch vụ (Modular Architecture v3.1)
+## 1. Chiến lược Phân rã Dịch vụ (Modular Architecture + Standalone LLM Serving v3.3)
 
-Hệ thống được tổ chức theo kiến trúc **Self-Contained Modular Monolith** (FastAPI + SQLite WAL + Local Disk), đảm bảo chạy mượt mà bằng 1 lệnh duy nhất mà không cần Redis hay GPU:
+Hệ thống được tổ chức theo kiến trúc **FastAPI Backend kết hợp Dịch vụ Serving `llama.cpp` Độc lập (Standalone Managed Subprocess)**. Thay vì gộp chung mô hình LLM vào trong tiến trình FastAPI qua `llama-cpp-python`, Backend quản lý một service riêng khởi chạy trực tiếp `llama.cpp server` gốc và giao tiếp qua mạng nội bộ (`127.0.0.1`) bằng Python Client:
 
 ```mermaid
 flowchart LR
     subgraph FrontendSPA ["Frontend (React / Vite)"]
-        UI["Web UI Controls<br>(Upload, Zoom, Toggle Original/VI)"]
+        UI["Web UI Controls<br>(Upload, Zoom, Toggle Original/VI, Engine Badge)"]
         CanvasEngine["🎨 3-Layer HTML Canvas Engine<br>(Layer 0: Base Page, Layer 1: Whiteout, Layer 2: VI Text + KaTeX)"]
         PDFExport["📑 Canvas-to-PDF Exporter"]
         UI <--> CanvasEngine
         CanvasEngine --> PDFExport
     end
 
-    subgraph BackendApp ["Backend Application (FastAPI Single Process)"]
-        API["API Routers<br>(Ingestion, Sessions, Canvas-Data, Assets)"]
+    subgraph BackendApp ["Backend Application (FastAPI Main Process)"]
+        API["API Routers<br>(Ingestion, Sessions, Canvas-Data, Assets, System)"]
         
-        subgraph CoreServices ["Core Domain Services v3.1"]
+        subgraph CoreServices ["Core Domain Services v3.3"]
             IngestionSvc["1. Ingestion Service<br>(PDF Validator & arXiv Downloader)"]
             IndraOcrSvc["2. Indra OCR & Coordinate Normalizer<br>(indra_ocr ONNX + Normalized BBox [0..1])"]
             PageAssetSvc["3. Page Snapshot & Figure Extractor<br>(PyMuPDF Base Page PNG + Figure Crops)"]
-            TranslatorRouter{"4. Translation Engine Router<br>(LLM_PROVIDER: gemini / llama_cpp)"}
-            GeminiTranslator["4a. Gemini Full-Text Translator<br>(Smart Filter + Single-Call 64K + Auto-Resume)"]
-            LlamaService["4b. Local Llama.cpp Service<br>(Qwen3 GGUF + Adaptive Batching + Offline)"]
+            TranslatorRouter{"4. Translation Engine Router<br>(LLM_PROVIDER: llama_cpp / gemini)"}
+            GeminiTranslator["4a. Gemini Cloud Client<br>(Smart Filter + Single-Call 64K + Auto-Resume)"]
+            LlamaClient["4b. Local Llama Python Client<br>(2000-2500 EN Words Batcher + Internal HTTP Client)"]
+            LlamaServerMgr["4c. Llama.cpp Server Manager<br>(Managed Subprocess Lifecycle & Healthcheck)"]
             LayoutMapper["5. Layout Coordinate Mapper<br>(Bind Translated Blocks to Normalized BBoxes)"]
             ProgressHub["6. SSE Broadcaster<br>(Real-time Phase & Progress Streaming)"]
         end
@@ -39,9 +40,13 @@ flowchart LR
         Repo["Repository Layer<br>(SQLAlchemy Async)"]
     end
 
+    subgraph StandaloneLLM ["Standalone llama.cpp Server Process (127.0.0.1:8081)"]
+        LlamaCppServer["🚀 Native llama.cpp Server<br>• Model: gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf<br>• CPU: 4 P-Cores (Intel i5-13500H) + HW Accel<br>• Memory: <= 8.0 GB RAM Ceiling<br>• Context: 16K (16384) / 8K (8192) Tokens"]
+    end
+
     subgraph LocalState ["Local Storage Tier"]
         SQLite[(SQLite DB WAL<br>paper_translation.db)]
-        DiskStore[(Local Disk Storage<br>raw_pdfs/, pages/, figures/)]
+        DiskStore[(Local Disk Storage<br>raw_pdfs/, pages/, figures/, models/)]
     end
 
     UI <-->|HTTP REST & SSE| API
@@ -53,18 +58,23 @@ flowchart LR
     IndraOcrSvc --> PageAssetSvc
     PageAssetSvc --> TranslatorRouter
     TranslatorRouter -->|gemini| GeminiTranslator
-    TranslatorRouter -->|llama_cpp| LlamaService
+    TranslatorRouter -->|llama_cpp| LlamaClient
+    LlamaClient -->|Ensure Running / Stop| LlamaServerMgr
+    LlamaServerMgr -.->|Spawn & Monitor Process| LlamaCppServer
+    LlamaClient <-->|Internal Loopback HTTP<br>/v1/chat/completions| LlamaCppServer
     GeminiTranslator --> LayoutMapper
-    LlamaService --> LayoutMapper
+    LlamaClient --> LayoutMapper
     
     IngestionSvc <--> DiskStore
     PageAssetSvc <--> DiskStore
+    LlamaCppServer <--> DiskStore
     LayoutMapper --> Repo
     Repo <--> SQLite
     
     IndraOcrSvc -.-> ProgressHub
     PageAssetSvc -.-> ProgressHub
     GeminiTranslator -.-> ProgressHub
+    LlamaClient -.-> ProgressHub
     LayoutMapper -.-> ProgressHub
 ```
 
@@ -86,67 +96,49 @@ flowchart LR
     - `box` / `bbox`: Tọa độ pixel trên trang đã được khử nghiêng (`rotation`, `skew`).
     - `text`: Nội dung văn bản hoặc bảng HTML/LaTeX của khối.
   - **Chuẩn hóa Hệ Tọa Độ (Coordinate Normalization):**
-    - Quy đổi mọi tọa độ hộp từ pixel của ảnh OCR sang hệ tọa độ tỷ lệ tương đối `[x0_norm, y0_norm, x1_norm, y1_norm]` nằm trong đoạn `[0.0, 1.0]` theo chiều rộng và chiều cao trang:
-      $$x_{\text{norm}} = \frac{x_{\text{px}}}{W_{\text{ocr}}}, \quad y_{\text{norm}} = \frac{y_{\text{px}}}{H_{\text{ocr}}}$$
-    - Nhờ hệ tọa độ `[0.0 .. 1.0]`, mọi sai lệch về DPI giữa Indra OCR, PyMuPDF (72 DPI) và HTML Canvas đều được loại bỏ hoàn toàn.
+    - Quy đổi mọi tọa độ hộp từ pixel của ảnh OCR sang hệ tọa độ tỷ lệ tương đối `[x0_norm, y0_norm, x1_norm, y1_norm]` nằm trong đoạn `[0.0, 1.0]`.
   - **Thu Hồi Tài Nguyên Phần Cứng Triệt Để (`unload()`):**
-    - Phương thức `unload()` gọi `pool.shutdown(wait=False, cancel_futures=True)` dừng ngay lập tức các luồng worker threads của ONNX Runtime nhằm tránh chiếm dụng CPU.
-    - Hủy tham chiếu tất cả `InferenceSession` (`det`, `rec`, `order`, `orient`, `mask`, `math`) và kích hoạt `gc.collect()` để giải phóng hoàn toàn bộ nhớ RAM.
-    - Hỗ trợ Context Manager (`with IndraOcrService() as svc`) và tự động thực thi trong khối `finally:` của tiến trình nền.
+    - Phương thức `unload()` gọi `pool.shutdown(wait=False, cancel_futures=True)` dừng ngay lập tức các luồng worker threads của ONNX Runtime.
+    - Hủy tham chiếu tất cả `InferenceSession` (`det`, `rec`, `order`, `orient`, `mask`, `math`) và kích hoạt `gc.collect()` để giải phóng hoàn toàn bộ nhớ RAM trước khi tiến trình `llama.cpp server` hoạt động.
 
 ### 2.3. Page Snapshot & Figure Extractor Service (`page_asset_service.py`)
 - **Nhiệm vụ:**
   - Dùng `PyMuPDF (fitz)` kết xuất từng trang PDF gốc thành ảnh nền độ phân giải cao (`storage/pages/{session_id}/page_{page_num}.png` ở 200 DPI) làm **Layer 0** cho HTML Canvas.
-  - Việc có sẵn ảnh nền trang gốc (Layer 0) đảm bảo **100% sơ đồ vector (TikZ/PGFPlots), biểu đồ, đường viền bảng và công thức toán học độc lập** luôn hiển thị nguyên vẹn trên Canvas ngay cả khi OCR không đóng khung riêng cho hình vẽ.
-  - Đồng thời, với các khối được đánh nhãn `figure` / `picture`, hệ thống hỗ trợ crop riêng thành `storage/figures/{session_id}/page_{p}_fig_{idx}.png` để phục vụ xem chi tiết.
-  - Tự động đóng tài liệu `doc.close()`, xóa bộ nhớ ảnh raster `del pix` và thu gom rác sau khi kết xuất để tối ưu RAM.
+  - Bảo toàn **100% sơ đồ vector (TikZ/PGFPlots), biểu đồ, đường viền bảng và công thức toán học độc lập**.
+  - Với các khối được đánh nhãn `figure` / `picture`, hệ thống hỗ trợ crop riêng thành `storage/figures/{session_id}/page_{p}_fig_{idx}.png`.
 
-### 2.4. Universal Translator & Gemini Full-Text Engine (`gemini_translator.py`)
+### 2.4. Standalone Llama.cpp Server Manager (`llama_server_manager.py`) & Python Client (`llama_client_service.py`)
 - **Nhiệm vụ:**
-  - **Chuẩn Hóa Giao Thức OpenAI-Compatible (/v1/chat/completions):**
-    - Hỗ trợ toàn diện Google Gemini (`gemini-3.5-flash-lite`), OpenAI ChatGPT (`gpt-4o-mini`), và các mô hình cục bộ / tự host (**Ollama**, **LM Studio**, **Llama.cpp**, **vLLM**, self-hosted translation models).
-    - Tự động nhận diện và chuẩn hóa URL endpoint (`normalized_llm_endpoint`).
-  - **Bước 1 — Bộ lọc Khối Cần Dịch (Smart Translatable Filter):**
-    - Đánh dấu `is_translatable = False` đối với:
-      1. Các khối `page header`, `page footer` (số trang, tên hội nghị ở lề trang).
-      2. Các khối thuộc mục **References / Bibliography** (bắt đầu từ tiêu đề `References` hoặc `Bibliography` ở cuối bài báo) — vì tài liệu tham khảo quốc tế cần giữ nguyên tên tiếng Anh để tra cứu và chiếm tới 20–30% độ dài bài báo.
-      3. Các khối chỉ chứa ký hiệu toán học thuần túy hoặc số liệu.
-  - **Bước 2 — Điều Phối Kênh Dịch (Single-Call vs. Adaptive Batching):**
-    - **Single-Call Toàn văn (Cloud Models - Gemini 1M Context):** Đóng gói toàn bộ các khối `is_translatable = True` dạng `[[BLK_0001]]`..`[[BLK_NNNN]]` và gửi trong 1 request duy nhất với `max_tokens = 65536`.
-    - **Adaptive Batching (Local Models - Ollama, LM Studio, Llama.cpp):** Tự động phân tách danh sách khối thành các lô nhỏ (~1,500 tokens / 8 khối mỗi batch) để thích ứng hoàn hảo với các mô hình local có Context Window nhỏ (4k–8k tokens) mà không bị lỗi tràn VRAM (OOM).
-  - **Bước 3 — Cơ Chế Callback Thời Gian Thực & Xử Lý Sự Cố (Retries & Backoff):**
-    - Hỗ trợ `ProgressCallback` cập nhật tiến trình liên tục tới kênh SSE `broadcaster.emit`.
-    - Cơ chế **Exponential Backoff**: Tự động thử lại khi gặp HTTP 429 Rate Limit (tôn trọng header `Retry-After`), lỗi máy chủ HTTP 5xx, hoặc lỗi mạng/timeout.
-    - Cơ chế **Auto-Continuation Guard**: Tiếp nối tự động cho các khối còn thiếu nếu gặp `finish_reason == "length"`.
-    - Fallback an toàn sang `MockTranslator` nếu mọi nỗ lực kết nối mạng đều thất bại.
+  - **Tách Biệt Tiến Trình Serving (Standalone Service Managed by Backend):**
+    - Tuyệt đối không dùng thư viện nhúng in-process `llama-cpp-python` gộp chung vào bên trong FastAPI.
+    - Cài đặt trực tiếp bộ công cụ `llama.cpp` gốc thông qua `uv/pip` trong môi trường ảo `.venv`.
+    - Xây dựng một service quản lý vòng đời riêng (`LlamaServerManager`) chịu trách nhiệm khởi chạy tiến trình độc lập `llama-server` (hoặc CLI server tương đương của `llama.cpp`), giám sát healthcheck (`/health`) và tắt tiến trình sạch sẽ khi giải phóng bộ nhớ.
+  - **Khai Thác Mô Hình `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` & Tối Ưu Phần Cứng:**
+    - Nạp tệp mô hình `backend/storage/models/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` (~2.62 GB).
+    - **Tối ưu hóa CPU Intel Core i5-13500H:** Cấu hình sử dụng đúng **4 P-cores hiệu năng cao** (`--threads 4 --threads-batch 4`) để tránh luồng rơi vào E-cores gây suy giảm tốc độ.
+    - **Cho phép tăng tốc phần cứng (Hardware Acceleration):** Bật hỗ trợ phần cứng (GPU/iGPU offloading, Flash Attention `--flash-attn`, AVX2/VNNI trên i5-13500H).
+    - **Giới hạn trần cứng 8.0 GB RAM:** Kiểm soát tổng mức chiếm dụng bộ nhớ của tiến trình `llama.cpp server` luôn **$\le 8.0\text{ GB}$ RAM** (trọng số ~2.62 GB + KV Cache Q8_0 + Compute Buffer cho 16K context chỉ chiếm ~3.8 – 4.5 GB RAM).
+  - **Tối Ưu Ngữ Cảnh 16K / 8K & Phân Lô Theo Số Từ (Word-Count Aware Batching):**
+    - Cấu hình mặc định **`n_ctx = 16384` (16K tokens)** (hỗ trợ tùy chọn `8192` - 8K tokens).
+    - **Quy tắc đóng gói Input (2,000 – 2,500 từ tiếng Anh):** Bộ phân lô tự động tính tổng số từ của **System Prompt + Text các khối bài báo** sao cho mỗi lần gọi nằm trong khoảng **2,000 đến 2,500 từ tiếng Anh** (~3,000 – 3,800 tokens).
+    - **Quy tắc bảo toàn Output Tiếng Việt (Dự phòng gấp 2.0 – 2.5 lần):** Do văn bản tiếng Việt khi dịch ra có số lượng từ và token nhiều hơn gấp **2.0 – 2.5 lần** so với tiếng Anh (~6,500 – 9,500 tokens), hệ thống cấp phát trần sinh văn bản `max_tokens = 10240` trên cửa sổ ngữ cảnh `16384` tokens, đảm bảo **100% không bao giờ bị tràn context hay đứt gãy giữa chừng**.
+  - **Giao Tiếp Qua Python Client Nội Bộ (`llama_client_service.py`):**
+    - FastAPI sử dụng Python Client bất đồng bộ (`httpx.AsyncClient`) giao tiếp với `llama.cpp server` qua mạng loopback nội bộ (`http://127.0.0.1:8081/v1/chat/completions`).
+    - Bảo toàn trọn vẹn thẻ định danh `[[BLK_XXXX]]`, công thức toán LaTeX `$..$` và bảng HTML `<table>`. Tự động fallback dịch bù nếu thiếu khối.
 
-### 2.5. Local Llama.cpp Translation Service (`llama_service.py` - Local-First Core)
+### 2.5. Cloud Gemini Full-Text Translator (`gemini_translator.py` - Tùy Chọn Thứ Hai)
 - **Nhiệm vụ:**
-  - **Động Cơ Dịch Thuật Mặc Định (Local-First Architecture):**
-    - Đóng vai trò là công cụ dịch thuật mặc định ưu tiên số 1 của hệ thống, vận hành 100% ngoại tuyến (chi phí 0đ, bảo mật tuyệt đối).
-    - Tự động nạp mô hình lượng hóa `Qwen3-1.7B-Q4_K_M.gguf` từ thư mục `backend/storage/models/`.
-  - **Khóa Trần Cứng 4GB RAM (Hard 4.0GB RAM Ceiling):**
-    - Mặc định khởi tạo ngữ cảnh `n_ctx = 8192` (8K tokens) tiêu tốn ~2.8 GB RAM (1.03 GB model weights + 1.5 GB KV Cache + buffer).
-    - Thiết lập giới hạn trần cứng `max_n_ctx = 16384` (16K tokens) tiêu tốn tối đa 4.0 GB RAM. Nghiêm cấm mọi tham số vượt quá 4GB RAM để chừa tài nguyên cho hệ điều hành và các ứng dụng khác của người dùng.
-  - **Quản Lý Vòng Đời Tuần Tự (Sequential Mutex Lifecycle):**
-    - Tuân thủ quy tắc cô lập bộ nhớ tuyệt đối: Không bao giờ nạp LLM khi Indra OCR chưa giải phóng sạch.
-    - Cung cấp phương thức `unload()` tường minh để thu hồi bộ nhớ RAM/VRAM khi có tác vụ OCR mới hoặc khi kết thúc phiên.
-  - **Dịch Thuật Ngoại Tuyến Qua Phân Lô Thích Ứng (Offline Adaptive Batching):**
-    - Chia cụm 6–8 khối văn bản liên tiếp (~1,500 tokens) để suy luận cục bộ, bảo toàn trọn vẹn thẻ định danh `[[BLK_XXXX]]`, công thức toán LaTeX `$..$` và bảng HTML `<table>`.
-    - Tự động fallback dịch từng khối riêng lẻ nếu mô hình bỏ sót thẻ trong cụm batch.
-  - **Đồng Bộ Dữ Liệu:** Trả về kết quả từ điển `{block_id: translated_text}` đồng nhất với giao diện của `GeminiTranslator` để lưu vào SQLite và hiển thị trên Canvas.
+  - Cung cấp tùy chọn dịch Single-Call toàn bài qua Google Gemini API (`max_tokens = 65536`) khi người dùng chuyển sang chế độ Cloud.
+  - Hỗ trợ `Smart Translatable Filter` (bỏ qua `page header/footer`, `figure` và `References`).
 
 ### 2.6. Layout Coordinate Mapper (`layout_mapper.py`)
 - **Nhiệm vụ:**
   - Ánh xạ từng bản dịch tiếng Việt vào đúng bản ghi `ocr_blocks` trong SQLite.
-  - Cung cấp dữ liệu hoàn chỉnh qua endpoint `GET /api/v1/sessions/{session_id}/canvas-data` bao gồm kích thước chuẩn của từng trang (`width_pt`, `height_pt`, `page_image_url`) và danh sách các khối (`block_id`, `label`, `bbox_norm`, `original_text`, `translated_text`, `is_translatable`).
+  - Cung cấp dữ liệu hoàn chỉnh qua endpoint `GET /api/v1/sessions/{session_id}/canvas-data`.
 
 ### 2.7. Frontend 3-Layer HTML Canvas Engine (`CanvasPaperViewer.tsx`)
 - **Nhiệm vụ:**
-  - Khởi tạo `<canvas>` cho từng trang theo đúng tỷ lệ `width_pt / height_pt` nhân với `devicePixelRatio` và mức `zoom`.
   - **Layer 0 (Base Page):** Vẽ `page_image_url` lên toàn bộ diện tích Canvas.
-  - **Layer 1 (Smart Redaction):** Duyệt qua các khối có `is_translatable == true` và đã có `translated_text`; vẽ hình chữ nhật màu nền (`#FFFFFF`) phủ kín tọa độ `[x0 * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H]` để xóa chữ tiếng Anh gốc mà không chạm vào bất kỳ hình ảnh hay sơ đồ nào bên ngoài hộp.
-  - **Layer 2 (Translated Text & Math Rendering):**
-    - Nếu khối chỉ chứa văn bản thuần: Dùng thuật toán Binary-Search Font Auto-Scaling (tìm cỡ chữ lớn nhất từ `6px` đến `28px` sao cho sau khi bẻ dòng `word-wrap` chiều cao văn bản nằm vừa khít trong chiều cao hộp `H_box`) và vẽ trực tiếp lên Canvas.
-    - Nếu khối chứa công thức toán LaTeX (`$...$`, `$$...$$`) hoặc bảng HTML (`<table>`): Kết xuất thông qua KaTeX + SVG `foreignObject` và vẽ ảnh SVG sắc nét trực tiếp vào đúng tọa độ hộp trên Canvas.
-  - Hỗ trợ chế độ xem đối chiếu (bật/tắt Layer 1+2 để xem tức thì bản gốc tiếng Anh bên dưới hoặc xem song song 2 trang) và xuất toàn bộ các trang Canvas ra tệp PDF chất lượng cao.
+  - **Layer 1 (Smart Redaction):** Vẽ hình chữ nhật màu nền (`#FFFFFF`) phủ kín tọa độ `[x0 * W, y0 * H, (x1 - x0) * W, (y1 - y0) * H]` của các khối đã dịch.
+  - **Layer 2 (Translated Text & Math Rendering):** Dùng Binary-Search Font Auto-Scaling và KaTeX SVG `foreignObject` để vẽ văn bản tiếng Việt và công thức toán sắc nét.
+  - Hỗ trợ xem đối chiếu và xuất toàn bộ các trang Canvas ra tệp PDF chất lượng cao.

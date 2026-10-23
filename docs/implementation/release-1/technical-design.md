@@ -1,8 +1,8 @@
-# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (v3.2 Local-First)
+# Thiết Kế Kỹ Thuật Chi Tiết (Technical Design) — Release 1 (v3.3 Standalone Local-First)
 
 **Tầng tài liệu**: Implementation Layer  
 **Release**: release-1 (Personal Core MVP)  
-**Phiên bản**: 3.2 (Local-First Priority, Sequential Mutex & 4GB Hard RAM Ceiling)  
+**Phiên bản**: 3.3 (Standalone `llama.cpp` Server, `Gemma-4-E2B`, 4 P-Cores i5-13500H, 8GB Hard RAM Ceiling & 2000-2500 EN Words Batching)  
 **Nguồn tham chiếu**: PRD [docs/implementation/release-1/prd.md](file:///E:/MyProject/paper-translation/docs/implementation/release-1/prd.md)  
 **Kiến trúc tham chiếu**: [docs/architecture/02-high-level-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/02-high-level-architecture.md), [docs/architecture/03-service-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/03-service-architecture.md), [docs/architecture/06-ai-architecture.md](file:///E:/MyProject/paper-translation/docs/architecture/06-ai-architecture.md)  
 **Ngày cập nhật**: 2026-10-23  
@@ -10,13 +10,15 @@
 
 ---
 
-## 1. Tổng quan Luồng Kỹ thuật Release 1 (v3.2 Local-First)
+## 1. Tổng quan Luồng Kỹ thuật Release 1 (v3.3 Standalone Local-First)
 
-Thiết kế kỹ thuật v3.2 chuyển trọng tâm sang **Local-First**, bảo vệ an toàn phần cứng người dùng qua 5 luồng xử lý chính:
+Thiết kế kỹ thuật v3.3 tách biệt hoàn toàn tiến trình suy luận LLM ra khỏi tiến trình FastAPI và tối ưu hóa cho phần cứng **Intel Core i5-13500H** qua 5 luồng xử lý chính:
 1. **Tiếp nhận tài liệu (Ingestion):** Nhận tệp PDF hoặc tải tự động từ arXiv.
 2. **Indra OCR & Chuẩn hóa Tọa độ `[0..1]`:** Bóc tách bố cục 2 cột, chuẩn hóa tọa độ tương đối, kết xuất ảnh nền toàn trang 200 DPI và crop các khối `figure` bằng PyMuPDF.
-3. **Thu Hồi Sạch Tài Nguyên OCR (Sequential Mutex Reclamation):** Dừng ThreadPool, giải phóng toàn bộ ONNX sessions và gọi `gc.collect()` để RAM trở về mức tối thiểu trước khi nạp LLM.
-4. **Động Cơ Dịch Local-First (llama.cpp & Qwen3 GGUF với Trần Cứng $\le 4.0\text{ GB}$ RAM):** Nạp `Qwen3-1.7B-Q4_K_M.gguf` với `n_ctx=8192` (~2.8GB RAM), khóa trần $n\_ctx \le 16384$, thực thi dịch qua Adaptive Batching (~1500 tokens / batch). Cho phép tùy chọn Cloud Gemini Single-Call.
+3. **Thu Hồi Sạch Tài Nguyên OCR (Sequential Mutex Reclamation):** Dừng ThreadPool, giải phóng toàn bộ ONNX sessions và gọi `gc.collect()` để trả lại 100% RAM và 4 nhân P-cores trước khi gọi LLM.
+4. **Dịch Vụ Serving Độc Lập (`llama.cpp` Server + `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf`):**
+   - Backend quản lý một tiến trình riêng chạy `llama.cpp server` gốc (cài qua `uv/pip`), cấu hình **4 P-cores trên Intel Core i5-13500H (`-t 4 -tb 4`)**, bật tăng tốc phần cứng (`--flash-attn`), giới hạn **RAM $\le 8.0\text{ GB}$**, cửa sổ ngữ cảnh **16K (`n_ctx=16384`)** (hoặc tùy chọn 8K).
+   - **Python Client** của Backend đóng gói mỗi lượt gọi gồm **System Prompt + Text bài báo = 2,000 – 2,500 từ tiếng Anh** (~3,000 – 3,800 tokens) và giao tiếp qua mạng nội bộ (`http://127.0.0.1:8081/v1/chat/completions`) với `max_tokens=10240` (dự phòng gấp **2.0 – 2.5 lần** cho tiếng Việt) để không bao giờ tràn context.
 5. **Tái Hiện 3 Lớp Trên HTML Canvas, Hiển Thị UI Engine Indicator & Xuất PDF:** Vẽ Layer 0 (Base Page) $\rightarrow$ Layer 1 (Smart Redaction `#FFFFFF`) $\rightarrow$ Layer 2 (Auto-Fit Text + KaTeX SVG), hiển thị huy hiệu trạng thái Engine trên UI và xuất PDF 1-click.
 
 ---
@@ -55,47 +57,52 @@ sequenceDiagram
 
     API->>DB: Lưu paper_pages và ocr_blocks (kèm cờ is_translatable)
     
-    Note over API,Indra: [SEQUENTIAL MUTEX RECLAMATION]<br>Bắt buộc thu hồi 100% RAM trước khi sang bước dịch
+    Note over API,Indra: [SEQUENTIAL MUTEX RECLAMATION]<br>Bắt buộc thu hồi 100% RAM & CPU trước khi sang bước dịch
     API->>Indra: IndraOcrService.unload()
-    Note over Indra: pool.shutdown(wait=False)<br>del sessions (det, rec, math...)<br>gc.collect() -> RAM trở về tối thiểu
+    Note over Indra: pool.shutdown(wait=False)<br>del sessions (det, rec, math...)<br>gc.collect() -> Giải phóng sạch RAM & 4 P-Cores
 ```
 
 ---
 
-## 3. Sơ đồ Tuần tự 2: Dịch Thuật Local-First (Llama.cpp Qwen3 $\le$ 4GB RAM) Hoặc Cloud Gemini
+## 3. Sơ đồ Tuần tự 2: Dịch Thuật Qua Standalone `llama.cpp` Server (`Gemma-4-E2B` • 4 P-Cores • $\le 8\text{GB}$ RAM) Hoặc Cloud Gemini
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Task as ⚙️ Async Pipeline
-    participant Filter as 🔍 Smart Block Filter & Packer
-    participant Llama as 🧠 LlamaCppService (Local Qwen3 GGUF)
+    participant Task as ⚙️ Async Pipeline (FastAPI)
+    participant Batcher as 📏 Word-Budget Batcher (2000-2500 EN Words)
+    participant PyClient as 🔌 Python Internal HTTP Client (httpx)
+    participant SrvMgr as 🛠️ LlamaServerManager
+    participant LlamaSrv as 🚀 Standalone llama.cpp Server (127.0.0.1:8081)
     participant Gemini as 🌐 Google Gemini API (Cloud Option)
     participant DB as 🗄️ SQLite DB
     participant SSE as 📡 SSE Broadcaster
 
-    Task->>Filter: Đọc toàn bộ ocr_blocks theo reading_order ASC
-    Filter->>Filter: Đánh dấu is_translatable=False cho page header/footer, figure & mục References
+    Task->>Batcher: Đọc toàn bộ ocr_blocks (is_translatable=True) theo reading_order ASC
     
-    alt Chế độ Mặc định: Local-First (LLM_PROVIDER="llama_cpp")
-        Task->>SSE: Emit event (phase='loading_llm', progress=40%, "Đang nạp mô hình Qwen3 GGUF...")
-        Task->>Llama: LlamaCppService.get_instance(n_ctx=8192)
-        Note over Llama: Khóa trần cứng <= 4.0GB RAM (n_ctx <= 16384)<br>Mặc định n_ctx=8192 chiếm ~2.8GB RAM
+    alt Chế độ Mặc định: Standalone Local llama.cpp (LLM_PROVIDER="llama_cpp")
+        Task->>SSE: Emit event (phase='starting_llm_server', progress=40%, "Đang khởi động dịch vụ llama.cpp server (Gemma-4-E2B)...")
+        Task->>SrvMgr: ensure_server_running()
+        SrvMgr->>LlamaSrv: Spawn subprocess llama-server (model=gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf, -t 4, -tb 4, -c 16384, -fa, --cache-type-k q8_0)
+        Note over LlamaSrv: Sử dụng 4 P-Cores i5-13500H + HW Accel<br>RAM chiếm dụng ~4.2GB (<= 8.0GB Trần Cứng)
+        SrvMgr->>LlamaSrv: GET http://127.0.0.1:8081/health
+        LlamaSrv-->>SrvMgr: 200 OK {"status": "ok"}
         
-        loop Từng batch thích ứng (6-8 khối ~1500 tokens)
-            Filter->>Llama: Gửi batch kèm [[BLK_XXXX]] + IT/AI Glossary
-            Llama-->>Task: Sinh bản dịch bảo toàn [[BLK_XXXX]], LaTeX $..$, <table>
-            Task->>Task: Regex bóc tách [[BLK_XXXX]]
+        loop Từng lô theo ngân sách từ (System Prompt + Paper Text = 2,000 - 2,500 từ tiếng Anh)
+            Batcher->>PyClient: Đóng gói Batch (~3,000 - 3,800 tokens) kèm [[BLK_XXXX]] + IT/AI Glossary
+            PyClient->>LlamaSrv: POST http://127.0.0.1:8081/v1/chat/completions (max_tokens=10240)
+            Note over LlamaSrv: Output tiếng Việt nở gấp 2.0 - 2.5x (~6,500 - 9,500 tokens)<br>Nằm gọn trong 16K Context -> 0% tràn context
+            LlamaSrv-->>PyClient: JSON Response (Translated Vietnamese blocks)
+            PyClient->>Task: Regex bóc tách [[BLK_XXXX]]
             opt Nếu thiếu mã khối (Edge Case)
-                Task->>Llama: Fallback dịch đơn lẻ riêng khối bị thiếu
+                PyClient->>LlamaSrv: Fallback gọi bù riêng khối bị thiếu qua mạng nội bộ
             end
-            Task->>SSE: Emit event (phase='translating_local', progress=40% + N%, "Đang dịch qua Qwen3...")
+            Task->>SSE: Emit event (phase='translating_local', progress=40% + N%, "Đang dịch qua Gemma-4-E2B Standalone Server...")
         end
     else Chế độ Tùy chọn: Cloud Gemini (LLM_PROVIDER="gemini")
         Task->>SSE: Emit event (phase='translating_cloud', progress=50%, "Dịch Single-Call qua Gemini...")
-        Filter->>Gemini: Single-Call 64K tokens kèm [[BLK_0001]]..[[BLK_NNNN]]
+        Batcher->>Gemini: Single-Call 64K tokens kèm [[BLK_0001]]..[[BLK_NNNN]]
         Gemini-->>Task: Phản hồi toàn văn bản dịch
-        Task->>Task: Regex bóc tách [[BLK_XXXX]]
     end
 
     Task->>DB: UPDATE ocr_blocks SET translated_text=...
@@ -146,25 +153,29 @@ sequenceDiagram
 
 ---
 
-## 5. Đặc Tả Hợp Đồng API Chỉ Báo Trạng Thái Engine (UI Engine Status Contract)
+## 5. Đặc Tả Hợp Đồng API Chỉ Báo Trạng Thái Engine (UI Engine Status Contract v3.3)
 
 ### 5.1. Endpoint: `GET /api/v1/system/engine-status`
-- **Mục đích:** Cung cấp thông tin thời gian thực về Engine dịch thuật đang kích hoạt và mức giới hạn tài nguyên cho Frontend hiển thị huy hiệu trên Header.
+- **Mục đích:** Cung cấp thông tin thời gian thực về dịch vụ Standalone `llama.cpp` Server, cấu hình phần cứng 4 P-cores i5-13500H, ngân sách từ và mức giới hạn 8GB RAM.
 - **Phản hồi mẫu (JSON):**
 ```json
 {
   "active_provider": "llama_cpp",
+  "serving_architecture": "standalone_llama_cpp_server",
+  "internal_endpoint": "http://127.0.0.1:8081/v1/chat/completions",
   "is_local": true,
-  "model_name": "Qwen3-1.7B-Q4_K_M.gguf",
-  "context_window": 8192,
-  "hard_ram_ceiling_gb": 4.0,
-  "estimated_ram_usage_gb": 2.8,
+  "model_name": "gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf",
+  "cpu_target": "Intel Core i5-13500H (4 P-Cores)",
+  "threads_config": 4,
+  "hardware_acceleration": true,
+  "context_window": 16384,
+  "supported_context_modes": [8192, 16384],
+  "input_word_budget": "2000 - 2500 English words (System Prompt + Paper Text)",
+  "output_token_headroom": "10240 tokens (2.0x - 2.5x Vietnamese expansion safe)",
+  "hard_ram_ceiling_gb": 8.0,
+  "estimated_ram_usage_gb": 4.2,
   "sequential_mutex_status": "READY",
-  "ocr_active": false
+  "ocr_active": false,
+  "llama_server_running": true
 }
 ```
-
-### 5.2. Endpoint: `POST /api/v1/system/engine-switch`
-- **Mục đích:** Cho phép người dùng chuyển đổi qua lại giữa `llama_cpp` (Local-First) và `gemini` (Cloud).
-- **Yêu cầu (JSON):** `{"provider": "llama_cpp" | "gemini"}`.
-- **Cơ chế:** Khi chuyển sang `gemini`, nếu `llama_cpp` đang nạp, hệ thống kích hoạt `unload()` để trả lại RAM. Ngược lại, khi chuyển sang `llama_cpp`, kiểm tra tệp GGUF và nạp Singleton an toàn dưới 4GB RAM.

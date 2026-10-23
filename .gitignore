@@ -224,3 +224,7 @@ __marimo__/
 tasks/
 AGENTS.md
 *.gguf
+*.db
+*.db-shm
+*.db-wal
+backend/storage/temp/*

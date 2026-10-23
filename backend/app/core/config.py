@@ -74,26 +74,31 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_BYTES: int = 52_428_800  # 50 MB
 
     # =========================================================================
-    # Cấu hình AI / LLM - Chiến lược Local-First (mặc định llama_cpp + Qwen3)
-    # Tương thích:
-    # 1. Local Llama.cpp (mặc định ưu tiên cao nhất, chạy ngoại tuyến)
-    # 2. Google Gemini (tùy chọn dự phòng)
-    # 3. OpenAI ChatGPT / Ollama / LM Studio
+    # Cấu hình AI / LLM - Chiến lược Local-First Standalone Serving
+    # Model: gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf
+    # Tối ưu hóa 4 P-cores trên Intel Core i5-13500H, RAM trần <= 8.0GB
+    # Context window 16K (16384) / 8K (8192) tokens
     # =========================================================================
     LLM_PROVIDER: str = "llama_cpp"  # llama_cpp, gemini, openai, ollama, lm_studio, self_hosted
-    LLM_MODEL_NAME: str = "Qwen3-1.7B-Q4_K_M.gguf"
-    LLM_LOCAL_N_CTX: int = 16384  # Nâng lên 16K context window (~3.5 - 3.8GB RAM)
-    LLM_LOCAL_MAX_N_CTX: int = 16384  # Khóa trần cứng 16K context (<= 4.0GB RAM)
-    LLM_LOCAL_THREADS: int = 8  # Tối ưu hóa 6 - 8 core CPU để tăng tốc độ suy luận
-    LLM_LOCAL_N_BATCH: int = 1024  # Tăng throughput prompt ingestion trên đa luồng CPU
-    LLM_LOCAL_MAX_OUTPUT_TOKENS: int = 5120  # Ngưỡng trần 4000 - 6000 tokens tránh đứt đoạn tiếng Việt
-    LLM_LOCAL_N_GPU_LAYERS: int = -1  # Tự động nạp GPU nếu có CUDA, fallback sang 0 nếu CPU
-    LLM_HARD_RAM_CEILING_GB: float = 4.0
+    LLM_MODEL_NAME: str = "gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf"
+    LLM_LOCAL_N_CTX: int = 16384  # Chuẩn 16K context window
+    LLM_LOCAL_MAX_N_CTX: int = 16384  # Khóa trần cứng 16K context
+    LLM_LOCAL_THREADS: int = 4  # Tối ưu chính xác 4 P-cores của Intel Core i5-13500H
+    LLM_LOCAL_N_BATCH: int = 512  # Batch size tối ưu cho standalone server
+    LLM_LOCAL_MAX_OUTPUT_TOKENS: int = 10240  # Dự phòng output tiếng Việt nở 2.0x - 2.5x
+    LLM_LOCAL_N_GPU_LAYERS: int = -1  # Tự động nạp GPU/iGPU nếu có, fallback CPU 4 P-cores
+    LLM_HARD_RAM_CEILING_GB: float = 8.0  # Giới hạn trần cứng 8GB RAM
+
+    # Standalone llama.cpp Server Service config
+    LLM_SERVER_HOST: str = "127.0.0.1"
+    LLM_SERVER_PORT: int = 8081
+    LLM_SERVER_TIMEOUT_SECONDS: float = 900.0  # Nâng lên 900s (15 phút) để đáp ứng các lô suy luận dịch thuật lớn trên CPU 4 P-cores
+    LLM_SERVER_AUTO_START: bool = True
 
     LLM_API_BASE: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gemini-3.5-flash-lite"
-    LLM_TEMPERATURE: float = 0.2
+    LLM_TEMPERATURE: float = 0.0
     LLM_TIMEOUT_SECONDS: float = 60.0
     LLM_MAX_RETRIES: int = 3
     LLM_RETRY_DELAY_SECONDS: float = 2.0
@@ -110,11 +115,16 @@ class Settings(BaseSettings):
         return self.models_dir / self.LLM_MODEL_NAME
 
     def get_estimated_ram_usage_gb(self, n_ctx: int | None = None) -> float:
-        """Ước tính mức chiếm dụng RAM dựa trên kích thước context window."""
+        """Ước tính mức chiếm dụng RAM dựa trên kích thước context window cho Gemma-4-E2B."""
         ctx = n_ctx or self.LLM_LOCAL_N_CTX
-        # Model weights (~1.03GB) + KV cache + buffers
-        # 4096 ctx: ~2.5GB, 8192 ctx: ~2.8GB, 16384 ctx: ~3.75GB (trong ranh giới 3.5 - 4.0GB RAM)
-        return round(1.03 + (ctx / 16384) * 2.72, 2)
+        # Trọng số Gemma-4-E2B (~2.62GB) + KV cache Q8_0 (~0.9GB ở 16K) + Compute buffers (~0.6GB)
+        # 8192 ctx: ~3.5GB, 16384 ctx: ~4.2GB (nằm gọn trong trần cứng 8.0GB RAM)
+        return round(2.62 + (ctx / 16384) * 1.58, 2)
+
+    @property
+    def standalone_server_url(self) -> str:
+        """URL nội bộ của standalone llama.cpp server."""
+        return f"http://{self.LLM_SERVER_HOST}:{self.LLM_SERVER_PORT}"
 
     @property
     def effective_api_key(self) -> str:

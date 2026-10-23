@@ -1,0 +1,11 @@
+{
+  "e2e_full_pipeline_seconds": 2045.37,
+  "e2e_full_pipeline_minutes": 34.09,
+  "total_pages": 11,
+  "total_blocks_extracted": 177,
+  "total_blocks_translated": 160,
+  "translation_coverage_percent": 90.4,
+  "verification_seconds": 0.35,
+  "total_e2e_test_seconds": 2045.73,
+  "total_e2e_test_minutes": 34.1
+}

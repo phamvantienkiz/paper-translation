@@ -1,41 +1,36 @@
-# Product Requirements Document (PRD): Kiến Trúc Local-First, Bộ Điều Phối Tuần Tự Tài Nguyên & Giới Hạn Trần 4GB RAM
+# Product Requirements Document (PRD): Kiến Trúc Local-First, Bộ Điều Phối Tuần Tự Tài Nguyên, Standalone Serving & Giới Hạn Trần 8GB RAM
 
 **Tầng tài liệu**: Implementation Layer  
-**Release**: release-1 (Personal Core MVP — Local-First Shift)  
-**Phiên bản**: 2.0 (Local-First Priority, Resource Mutex & 4GB Hard RAM Ceiling)  
+**Release**: release-1 (Personal Core MVP — Local-First Standalone Shift)  
+**Phiên bản**: 3.0 (Standalone `llama.cpp` Server, `Gemma-4-E2B`, 4 P-Cores i5-13500H, Resource Mutex & 8GB Hard RAM Ceiling)  
 **Ngày cập nhật**: 2026-10-23  
 **Tác giả**: Senior IT-BA & Product Owner  
 **Trạng thái**: Approved  
-**Chất lượng yêu cầu**: 100/100  
+**Chất lượng yêu cầu**: 98/100  
 
 ---
 
 ## 1. Mục Tiêu Nghiệp Vụ & Giới Hạn Phần Cứng Cốt Lõi (Business & Hardware Context)
 
-### 1.1. Chuyển Dịch Chiến Lược Local-First (Local-First Pivot)
-- **Mục tiêu số 1**: Hệ thống chuyển đổi trọng tâm mặc định sang **Local-First**, ưu tiên tối đa việc khởi động và thực thi dịch thuật bài báo khoa học bằng mô hình cục bộ `Qwen3-1.7B-Q4_K_M.gguf` do backend FastAPI quản lý thông qua `llama.cpp`. Cloud API (Google Gemini) trở thành phương án tùy chọn/dự phòng thứ hai.
-- **Minh bạch hóa trên giao diện (UI Engine Transparency)**: Người dùng luôn quan sát thấy rõ hệ thống đang chạy ở chế độ nào (`Local LLM` hay `Cloud API`) kèm tên mô hình, thông số ngữ cảnh và cảnh báo tài nguyên thời gian thực.
+### 1.1. Chuyển Dịch Chiến Lược Standalone Local-First (Standalone Serving Pivot)
+- **Mục tiêu số 1**: Hệ thống ưu tiên mặc định việc dịch thuật bài báo khoa học bằng mô hình cục bộ **`gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf`**. Thay vì gộp chung vào bên trong tiến trình FastAPI qua `llama-cpp-python`, hệ thống sử dụng trực tiếp thư viện/công cụ `llama.cpp` gốc (cài đặt qua `uv/pip`), viết một **Service riêng quản lý tiến trình `llama.cpp server`** và dùng **Python Client giao tiếp qua mạng nội bộ (`127.0.0.1`)**.
+- **Minh bạch hóa trên giao diện (UI Engine Transparency)**: Người dùng luôn quan sát thấy rõ hệ thống đang chạy ở chế độ nào (`Local LLM: Gemma-4-E2B` hay `Cloud API`) kèm thông số 4 P-cores, cửa sổ ngữ cảnh 16K/8K và mức RAM tiêu thụ.
 
-### 1.2. Rào Chắn Trần Cứng 4GB RAM (Hard 4GB RAM Ceiling)
-- **Bài toán phần cứng người dùng**: Người dùng nghiên cứu khoa học và kỹ sư thường chạy đồng thời nhiều tác vụ trên máy trạm cá nhân (IDE lập trình, trình duyệt web nhiều tabs, ứng dụng văn phòng). Máy tính phổ thông có dung lượng RAM 8GB–16GB và suy luận chủ yếu trên CPU.
-- **Ràng buộc bất biến**:
-  - Tổng lượng RAM tối đa mà tiến trình Local LLM được phép chiếm dụng trên hệ điều hành **bắt buộc không được vượt quá ngưỡng trần 4.0 GB RAM**.
-  - **Phân tích kích thước ngữ cảnh (Context Window vs. RAM Usage)**:
-    - *Ngữ cảnh 4K – 8K (`n_ctx = 4096 .. 8192`)*: Trọng số mô hình (~1.03 GB) + KV Cache (~1.2 – 1.8 GB) + Bộ đệm suy luận $\approx$ **2.5 GB – 3.2 GB RAM** $\rightarrow$ **Vùng an toàn lý tưởng (Mặc định khuyến nghị)**.
-    - *Ngữ cảnh 16K (`n_ctx = 16384`)*: Trọng số mô hình (~1.03 GB) + KV Cache (~2.4 – 2.6 GB) + Bộ đệm $\approx$ **3.5 GB – 4.0 GB RAM** $\rightarrow$ **Ngưỡng cận trên kịch trần (Hard Ceiling)**.
-  - **Quy tắc thiết lập**:
-    - Mặc định cấu hình `n_ctx = 8192` (8K context) để đạt hiệu năng suy luận mượt mà, tiêu thụ ~2.8 GB RAM.
-    - Khóa trần cứng `max_n_ctx = 16384` (16K context). Tuyệt đối cấm cấu hình `n_ctx > 16384` trên CPU để bảo vệ toàn bộ hệ thống không bao giờ vượt qua 4GB RAM.
+### 1.2. Tối Ưu Phần Cứng Intel Core i5-13500H (4 P-Cores) & Rào Chắn Trần Cứng 8GB RAM
+- **Bài toán phần cứng thực tế**: Hệ thống vận hành trên laptop trang bị vi xử lý **Intel Core i5-13500H** (kiến trúc lai gồm **4 Performance-cores** và 8 Efficient-cores).
+- **Ràng buộc phần cứng & bộ nhớ bất biến**:
+  - **Cấu hình 4 P-cores & Tăng tốc phần cứng**: Tiến trình `llama.cpp server` bắt buộc cấu hình sử dụng **4 P-cores** (`--threads 4 --threads-batch 4`) và bật tăng tốc phần cứng (Flash Attention `--flash-attn`, AVX2/VNNI, GPU/iGPU offloading nếu khả dụng) để đạt tốc độ xử lý cao nhất mà không bị nghẽn ở các nhân E-cores.
+  - **Trần cứng $\le 8.0\text{ GB}$ RAM**: Tổng lượng RAM tối đa mà tiến trình `llama.cpp server` được phép chiếm dụng **bắt buộc không vượt quá ngưỡng 8.0 GB RAM**.
+  - **Phân tích kích thước ngữ cảnh (Context Window 8K / 16K vs. RAM Usage & Token Budget)**:
+    - Với mô hình `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` (~2.62 GB):
+      - **Ngữ cảnh 16K (`n_ctx = 16384` - Mặc định chuẩn cho lô 2,000–2,500 từ EN)**: Trọng số (~2.62 GB) + KV Cache Q8_0 (~0.9 GB) + Compute Buffer (~0.6 GB) $\approx$ **4.1 GB – 4.5 GB RAM** $\rightarrow$ **Nằm rất sâu dưới trần 8.0 GB RAM**, đồng thời cung cấp đủ 16,384 tokens để chứa **Input 2,000–2,500 từ tiếng Anh (~3,000–3,800 tokens)** và **Output tiếng Việt dài gấp 2.0–2.5 lần (~6,500–9,500 tokens)** mà không bao giờ bị tràn context.
+      - **Ngữ cảnh 8K (`n_ctx = 8192` - Chế độ tùy chọn nhanh)**: Tiêu thụ **~3.4 GB – 3.7 GB RAM**, sử dụng khi người dùng cấu hình lô đầu vào nhỏ hơn (~1,000–1,200 từ tiếng Anh).
 
 ### 1.3. Cơ Chế Điều Phối Tuần Tự Tài Nguyên (Sequential Mutex Pipeline)
-- **Nguyên tắc "Một Vận Động Viên Trên Đường Đua"**:
-  - Indra OCR (6 mô hình ONNX: `det`, `rec`, `order`, `orient`, `mask`, `math` + PyMuPDF) tiêu tốn khoảng **1.5 GB – 2.0 GB RAM** khi quét layout và kết xuất trang.
-  - Nếu nạp đồng thời cả Indra OCR và mô hình Local LLM (chiếm ~2.8 GB – 4.0 GB RAM), tổng mức chiếm dụng sẽ lên tới **4.5 GB – 6.0 GB RAM**, lập tức gây hiện tượng tràn bộ nhớ (Out-Of-Memory / OOM Crash) hoặc nghẽn phân luồng CPU (CPU Throttling).
-- **Quy trình tuần tự bắt buộc**:
-  1. **Phase 1 (Chạy OCR)**: Chỉ một mình Indra OCR được nạp vào bộ nhớ và xử lý toàn bộ các trang PDF.
-  2. **Phase 2 (Thu hồi sạch tài nguyên OCR)**: Ngay khi OCR kết thúc, hệ thống kích hoạt thu hồi toàn bộ tài nguyên: dừng ThreadPool (`pool.shutdown(wait=False)`), xóa sạch tham chiếu các session ONNX và gọi `gc.collect()` để RAM trở về trạng thái cơ bản.
-  3. **Phase 3 (Nạp & Dịch Local LLM)**: Sau khi RAM đã được giải phóng hoàn toàn, hệ thống mới nạp mô hình `Qwen3-1.7B-Q4_K_M.gguf` vào RAM (duy trì nghiêm ngặt dưới ngưỡng trần 4GB) và tiến hành dịch thuật theo cơ chế Adaptive Batching.
-  4. **Phase 4 (Hậu xử lý)**: Khi kết thúc dịch hoặc khi người dùng bắt đầu tải lên bài báo mới, mô hình LLM sẵn sàng được `unload()` để nhường chỗ lại cho chu kỳ OCR kế tiếp.
+- **Quy trình tuần tự bắt buộc giữa OCR và Standalone LLM Server**:
+  1. **Phase 1 (Chạy OCR)**: Indra OCR nạp vào bộ nhớ (~1.5 GB – 2.0 GB RAM) và xử lý toàn bộ các trang PDF. (Nếu `llama.cpp server` đang chạy trước đó và cần nhường toàn bộ CPU/RAM cho OCR tốc độ cao, hệ thống có thể tạm dừng hoặc cô lập luồng).
+  2. **Phase 2 (Thu hồi sạch tài nguyên OCR)**: Ngay khi OCR kết thúc, hệ thống dừng ThreadPool (`pool.shutdown(wait=False)`), xóa sạch tham chiếu các session ONNX và gọi `gc.collect()` để giải phóng 100% RAM và giải phóng hoàn toàn 4 nhân P-cores.
+  3. **Phase 3 (Khởi chạy/Gọi Standalone `llama.cpp` Server)**: Sau khi OCR đã giải phóng hoàn toàn CPU & RAM, `LlamaServerManager` đảm bảo tiến trình `llama.cpp server` (`gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf`, 4 P-cores, $\le 8\text{GB}$ RAM, 16K context) sẵn sàng tại `127.0.0.1:8081`, và **Python Client** gửi tuần tự các lô **2,000 – 2,500 từ tiếng Anh** qua mạng nội bộ để dịch thuật.
 
 ---
 
@@ -48,63 +43,60 @@ flowchart LR
         U["👤 Kỹ sư / Nhà nghiên cứu"]
     end
 
-    subgraph SystemBoundary ["Hệ Thống Dịch Bài Báo (Local-First MVP)"]
+    subgraph SystemBoundary ["Hệ Thống Dịch Bài Báo (Standalone Local-First MVP)"]
         UC1["(1. Tải lên bài báo PDF / arXiv)"]
         UC2["(2. Quan sát & Chọn Engine trên UI: Local vs Cloud)"]
         UC3["(3. Chạy Indra OCR bóc tách layout)"]
         UC4["(4. Thu hồi sạch tài nguyên OCR: unload & gc)"]
-        UC5["(5. Nạp Local LLM Qwen3 với trần cứng <= 4GB RAM)"]
-        UC6["(6. Dịch Adaptive Batching 6-8 khối / ~1500 tokens)"]
+        UC5["(5. Khởi chạy Service riêng llama.cpp Server<br>Gemma-4-E2B • 4 P-Cores • <= 8GB RAM • 16K Ctx)"]
+        UC6["(6. Python Client gửi lô 2,000-2,500 từ EN qua mạng nội bộ<br>Output tiếng Việt dư 2.0-2.5x chống tràn context)"]
         UC7["(7. Hiển thị 3-Layer HTML Canvas Viewer)"]
 
         UC1 --> UC2
         UC2 --> UC3
         UC3 -.->|<<sequential mutex>>| UC4
-        UC4 -.->|<<release mem before load>>| UC5
+        UC4 -.->|<<release CPU/RAM before LLM>>| UC5
         UC5 --> UC6
         UC6 --> UC7
     end
 
-    subgraph HardwareConstraint ["Ràng Buộc Phần Cứng (Hard Ceiling <= 4GB RAM)"]
-        RAM["🧠 Shared Host Memory<br>(Max 4.0 GB Allocation)"]
-        ModelDisk[("📦 storage/models/<br>Qwen3-1.7B-Q4_K_M.gguf")]
+    subgraph HardwareConstraint ["Phần Cứng Laptop Intel Core i5-13500H"]
+        CPU_RAM["⚡ 4 P-Cores + HW Accel<br>🧠 Host RAM Ceiling <= 8.0 GB"]
+        ModelDisk[("📦 storage/models/<br>gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf")]
     end
 
     U --> UC1
     U --> UC2
-    UC3 <-->|Chiếm 1.5GB-2GB| RAM
-    UC4 -.->|Trả lại 100% RAM| RAM
-    UC5 <-->|Chiếm 2.8GB (8K ctx) <= 4GB Max| RAM
+    UC3 <-->|Chiếm 1.5GB-2GB| CPU_RAM
+    UC4 -.->|Trả lại 100% RAM & CPU| CPU_RAM
+    UC5 <-->|Chiếm ~4.2GB (16K ctx) <= 8GB Max| CPU_RAM
     UC5 <--> ModelDisk
 ```
 
-### 2.2. Sơ đồ Luồng Tuần Tự Chi Tiết (Detailed Sequential Mutex Pipeline Flow)
+### 2.2. Sơ đồ Luồng Tuần Tự Chi Tiết (Detailed Sequential Mutex & Standalone Serving Flow)
 ```mermaid
 flowchart TD
-    Start([Bắt đầu xử lý bài báo]) --> LockCheck{Kiểm tra trạng thái bộ nhớ}
-    
-    LockCheck --> EnsureLLMUnloaded["Đảm bảo LLM đang Unloaded (nếu còn trong bộ nhớ)"]
-    EnsureLLMUnloaded --> LoadOCR["Khởi tạo Indra OCR Service (ONNX CPU)"]
+    Start([Bắt đầu xử lý bài báo]) --> LoadOCR["Khởi tạo Indra OCR Service (ONNX CPU)"]
     
     LoadOCR --> ExecOCR["Bóc tách bố cục 2 cột, thứ tự đọc, bảng HTML, LaTeX"]
     ExecOCR --> OCRDone{OCR hoàn thành 100% trang?}
     
-    OCRDone -- Có --> CleanupOCR["THU HỒI SẠCH TÀI NGUYÊN OCR:<br>1. pool.shutdown(wait=False)<br>2. del sessions (det, rec, math...)<br>3. gc.collect()<br>-> RAM trở về mức tối thiểu"]
+    OCRDone -- Có --> CleanupOCR["THU HỒI SẠCH TÀI NGUYÊN OCR:<br>1. pool.shutdown(wait=False)<br>2. del sessions (det, rec, math...)<br>3. gc.collect()<br>-> Giải phóng 100% RAM & 4 P-Cores"]
     
-    CleanupOCR --> CheckEngine{Kiểm tra cấu hình Engine<br>(Mặc định: Local LLM)?}
+    CleanupOCR --> CheckEngine{Kiểm tra cấu hình Engine<br>(Mặc định: Local llama.cpp)?}
     
-    CheckEngine -- "Local LLM (Qwen3)" --> CheckRAMCeiling["Xác định Context Window & Giới hạn RAM:<br>• n_ctx = 8192 (Mặc định ~2.8GB RAM)<br>• Cấm n_ctx > 16384 (Trần cứng 4.0GB RAM)"]
+    CheckEngine -- "Local LLM (Gemma-4-E2B)" --> EnsureStandaloneSrv["LlamaServerManager kiểm tra / khởi chạy tiến trình riêng llama.cpp Server:<br>• Model: gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf<br>• CPU: 4 P-Cores i5-13500H (-t 4 -tb 4) + Flash-Attn<br>• Ngữ cảnh: n_ctx = 16384 (16K) / 8192 (8K) | Trần <= 8.0GB RAM"]
     
-    CheckRAMCeiling --> LoadLLM["Nạp mô hình Qwen3-1.7B-Q4_K_M.gguf vào RAM<br>(Giới hạn chiếm dụng <= 4.0 GB)"]
-    LoadLLM --> BatchInfer["Adaptive Batching: Dịch 6-8 khối (~1500 tokens) kèm [[BLK_XXXX]]"]
-    BatchInfer --> LLMDone{Dịch xong tất cả các khối?}
+    EnsureStandaloneSrv --> WordBatcher["Word-Aware Batching:<br>Đóng gói (System Prompt + Text bài báo) = 2,000 - 2,500 từ tiếng Anh (~3,500 tokens)"]
+    WordBatcher --> InternalClient["Python Client gọi POST http://127.0.0.1:8081/v1/chat/completions<br>với max_tokens = 10240 (dư gấp 2.0 - 2.5x cho tiếng Việt)"]
+    InternalClient --> LLMDone{Dịch xong tất cả các lô?}
     
-    CheckEngine -- "Cloud API (Gemini)" --> CallCloud["Gọi Single-Call Gemini API qua Internet (0 MB RAM chiếm dụng)"]
+    CheckEngine -- "Cloud API (Gemini)" --> CallCloud["Gọi Single-Call Gemini API qua Internet"]
     CallCloud --> LLMDone
     
     LLMDone -- Có --> SyncData["Đồng bộ tọa độ & Lưu kết quả vào SQLite (ocr_blocks)"]
     SyncData --> RenderCanvas["Render bài báo lên 3-Layer HTML Canvas Viewer"]
-    RenderCanvas --> UpdateUIBadge["Cập nhật UI Engine Badge ('Local LLM: Qwen3-1.7B • 8K Ctx • 2.8GB RAM')"]
+    RenderCanvas --> UpdateUIBadge["Cập nhật UI Engine Badge ('Local LLM: Gemma-4-E2B • 16K Ctx • 4 P-Cores')"]
     UpdateUIBadge --> End([Hoàn tất])
 ```
 
@@ -114,20 +106,8 @@ flowchart TD
 
 | Mã Yêu Cầu | Tên Chức Năng | Mô Tả Nghiệp Vụ & Quy Tắc Kỹ Thuật | Ưu Tiên |
 |---|---|---|---|
-| **FR-07.1** | Động Cơ Dịch Local-First Mặc Định | Hệ thống mặc định kích hoạt và sử dụng Local LLM Engine (`llama_cpp` + `Qwen3-1.7B-Q4_K_M.gguf`) khi khởi động backend mà không yêu cầu người dùng phải cấu hình API key. Cloud Gemini đóng vai trò tùy chọn thứ hai. | P0 (Must) |
-| **FR-07.2** | Giới Hạn Ngữ Cảnh & Khóa Trần Cứng 4GB RAM | Cấu hình kích thước ngữ cảnh mặc định `n_ctx = 8192` (8K tokens) tiêu thụ ~2.8 GB RAM. Thiết lập giới hạn trần cứng `max_n_ctx = 16384` (16K tokens) tiêu thụ tối đa 4.0 GB RAM. Nghiêm cấm mọi thiết lập vượt quá 4GB RAM nhằm bảo vệ hệ điều hành và các ứng dụng khác của người dùng. | P0 (Must) |
-| **FR-07.3** | Bộ Điều Phối Tuần Tự Tài Nguyên (Sequential Mutex Scheduler) | Bắt buộc thực thi tuần tự hoàn toàn giữa Indra OCR và Local LLM. Sau khi OCR kết thúc, bắt buộc giải phóng toàn bộ session ONNX, dừng threadpool và gọi `gc.collect()`. Chỉ khi bộ nhớ đã được giải phóng mới được nạp LLM. Ngược lại, nếu có tác vụ OCR mới, LLM phải được unload trước. | P0 (Must) |
-| **FR-08.1** | Huy Hiệu Trạng Thái Động Cơ Trên UI (UI Engine Status Badge) | Giao diện hiển thị rõ ràng huy hiệu trạng thái tại Header: <br>- 🟢 `Local LLM: Qwen3-1.7B (8K Ctx • Offline)`<br>- 🔵 `Cloud API: Gemini-3.5-Flash (Single-Call 1M)`<br>Kèm công tắc chuyển đổi (Engine Switcher) để người dùng chủ động lựa chọn. | P0 (Must) |
-| **FR-08.2** | Báo Cáo Tiến Độ & Bộ Nhớ Thời Gian Thực (SSE Stream) | Kênh Server-Sent Events (SSE) phát thông tin chi tiết về từng giai đoạn: `phase: "ocr"` $\rightarrow$ `phase: "reclaiming_memory"` $\rightarrow$ `phase: "loading_llm"` $\rightarrow$ `phase: "translating_local"` kèm phần trăm hoàn thành. | P0 (Must) |
-
----
-
-## 4. Rào Chắn Kiến Trúc Bất Biến (Architecture Guardrails)
-
-1. **Rào chắn Trần Cứng 4GB RAM (Hardware Invariant):**
-   - Bất kỳ mã nguồn nào khởi tạo `Llama(...)` đều phải kiểm tra và xác nhận tham số `n_ctx <= 16384`. Tuyệt đối không cho phép vượt quá ngưỡng 4GB RAM khi chạy trên CPU.
-2. **Rào chắn Cách Ly Tuần Tự (Mutual Exclusion Invariant):**
-   - Cấm mọi hành vi gọi hàm nạp mô hình LLM khi `IndraOcrService` chưa gọi `unload()`.
-   - Áp dụng cờ khóa nội bộ `_ai_resource_lock: asyncio.Lock` để đảm bảo hai mô hình AI không bao giờ tồn tại đồng thời trong không gian bộ nhớ tiến trình.
-3. **Rào chắn Minh Bạch Trạng Thái (UI Observability):**
-   - API trả về trạng thái phiên dịch bắt buộc phải chứa trường `active_engine: "local_llm" | "cloud_gemini"` và `model_name: string` để UI hiển thị chính xác cho người dùng.
+| **FR-07.1** | Dịch Vụ Serving Riêng Lẻ (`llama.cpp` Server + Python Client) | Không gộp chung LLM vào trong tiến trình FastAPI. Sử dụng `uv/pip` cài đặt trực tiếp `llama.cpp` gốc, viết service riêng quản lý tiến trình `llama.cpp server` chạy mô hình `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` và giao tiếp qua Python Client trên mạng nội bộ (`127.0.0.1:8081`). | P0 (Must) |
+| **FR-07.2** | Tối Ưu 4 P-Cores Intel Core i5-13500H, Tăng Tốc Phần Cứng & Trần 8GB RAM | Cấu hình `llama.cpp server` sử dụng đúng **4 P-cores** (`--threads 4 --threads-batch 4`) trên Intel Core i5-13500H, cho phép bật tăng tốc phần cứng (`--flash-attn`, GPU/iGPU layers) và giới hạn tổng bộ nhớ chiếm dụng **$\le 8.0\text{ GB}$ RAM**. | P0 (Must) |
+| **FR-07.3** | Ngân Sách Lô 2,000–2,500 Từ Tiếng Anh & Dự Phòng Output 2.0–2.5x Trên 16K/8K Ctx | Tối ưu cửa sổ ngữ cảnh **16K tokens (`n_ctx=16384`)** (hỗ trợ tùy chọn 8K) sao cho mỗi lượt gọi có Input (System Prompt + Text bài báo) đạt **2,000 – 2,500 từ tiếng Anh**, và không gian Output (`max_tokens=10240`) dư dả gấp **2.0 – 2.5 lần** để bản dịch tiếng Việt không bao giờ bị tràn context. | P0 (Must) |
+| **FR-07.4** | Bộ Điều Phối Tuần Tự Tài Nguyên (Sequential Mutex Scheduler) | Thực thi tuần tự hoàn toàn giữa Indra OCR và `llama.cpp server`. Sau khi OCR kết thúc, bắt buộc giải phóng toàn bộ session ONNX, dừng threadpool và gọi `gc.collect()` trước khi bắt đầu phiên suy luận trên `llama.cpp server`. | P0 (Must) |
+| **FR-08.1** | Huy Hiệu Trạng Thái Động Cơ Trên UI (UI Engine Status Badge) | Giao diện hiển thị rõ ràng huy hiệu trạng thái tại Header: <br>- 🟢 `Local LLM: Gemma-4-E2B (16K Ctx • 4 P-Cores)`<br>- 🔵 `Cloud API: Gemini-3.5-Flash (Single-Call 1M)` | P0 (Must) |

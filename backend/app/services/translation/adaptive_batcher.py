@@ -20,8 +20,8 @@ class AdaptiveBatcher:
     def __init__(
         self,
         max_batches: int = 7,
-        max_tokens_per_batch: int = 3500,
-        max_words_per_batch: int = 1500,
+        max_tokens_per_batch: int = 3800,
+        max_words_per_batch: int = 2500,
         max_blocks_per_batch: int = 60,
         min_blocks_per_batch: int = 4,
     ):
@@ -122,7 +122,7 @@ class AdaptiveBatcher:
 
     def build_prompt_messages(self, batch: list[OcrBlockModel]) -> list[dict[str, str]]:
         """
-        Tạo messages ChatML chuẩn cho mô hình Qwen3 theo kỹ thuật Prompt Engineering:
+        Tạo messages ChatML chuẩn cho mô hình Gemma-4-E2B theo kỹ thuật Prompt Engineering:
         - Định danh Persona chuyên gia dịch thuật bài báo khoa học chuẩn quốc tế.
         - Phân định rõ ràng Quy tắc Bảo tồn (Strict Invariants): mã [[BLK_XXXX]], LaTeX, HTML table.
         - Chỉ dẫn ngữ phong học thuật chuẩn mực, súc tích, tự nhiên trong tiếng Việt.

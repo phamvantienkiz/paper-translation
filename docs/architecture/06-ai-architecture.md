@@ -2,30 +2,33 @@
 
 **Tầng tài liệu**: Architecture Layer (Single Source of Truth)  
 **Hệ thống**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 3.1 (Universal OpenAI-Compatible Standard, Adaptive Batching & Hardware Resource Management)  
-**Ngày cập nhật**: 2026-10-22  
+**Phiên bản**: 3.3 (Standalone Llama.cpp Server, Gemma-4-E2B, 4 P-Cores i5-13500H, 8GB RAM Ceiling & Word-Count Batching)  
+**Ngày cập nhật**: 2026-10-23  
 **Trạng thái**: Approved  
 
 ---
 
-## 1. Mục Tiêu & Triết Lý Thiết Kế AI (AI Core Philosophy)
+## 1. Mục Tiêu & Triết Lý Thiết Kế AI (AI Core Philosophy v3.3)
 
-1. **Ưu Tiên Local-First & Bảo Mật Tuyệt Đối (Local-First Priority):**
-   - Đặt động cơ dịch cục bộ (`llama.cpp` + `Qwen3-1.7B-Q4_K_M.gguf`) làm cốt lõi xử lý mặc định, bảo vệ 100% dữ liệu nghiên cứu nội bộ và vận hành hoàn toàn ngoại tuyến với chi phí 0đ.
-   - Cloud Gemini (Single-Call 1M context) đóng vai trò tùy chọn thứ hai khi người dùng cần tốc độ cực đại trên đám mây.
-2. **Khóa Trần Cứng 4.0 GB RAM Cho Phần Cứng Cá Nhân (Hard 4GB RAM Ceiling):**
-   - Bảo vệ hệ thống máy trạm cá nhân (8GB–16GB RAM) khỏi hiện tượng treo máy hoặc Out-Of-Memory.
-   - Cấu hình chuẩn ngữ cảnh: `n_ctx = 8192` (8K tokens) tiêu tốn ~2.8 GB RAM (vùng an toàn tối ưu).
-   - Thiết lập giới hạn trần cứng: `max_n_ctx = 16384` (16K tokens) tiêu tốn tối đa 4.0 GB RAM. Nghiêm cấm mọi cấu hình vượt quá 4GB RAM khi chạy trên CPU.
-3. **Bộ Điều Phối Tuần Tự Tài Nguyên Ngặt Nghèo (Sequential Mutex Scheduling):**
-   - Indra OCR (~1.5GB–2.0GB RAM) và Local LLM (~2.8GB–4.0GB RAM) tuyệt đối **không được nạp cùng lúc**.
-   - Chu trình bắt buộc: Chạy OCR $\rightarrow$ Thu hồi sạch 100% tài nguyên (`unload()`, hủy ONNX sessions, `pool.shutdown()`, `gc.collect()`) $\rightarrow$ Mới nạp Local LLM vào RAM/VRAM để suy luận.
-4. **Thích Ứng Kích Thước Ngữ Cảnh (Context-Aware Adaptive Batching):**
-   - Tự động đóng gói 6–8 khối văn bản liên tiếp (~1,500 tokens) cho Local LLM, bảo toàn mã định danh `[[BLK_XXXX]]`, công thức LaTeX và thẻ bảng biểu.
+1. **Kiến Trúc Serving Độc Lập (Standalone `llama.cpp` Server Service):**
+   - Loại bỏ cách tiếp cận nhúng `llama-cpp-python` chạy chung bộ nhớ (in-process) với FastAPI.
+   - Sử dụng trực tiếp **`llama.cpp` gốc** được cài đặt qua `uv/pip`, khởi chạy dưới dạng một **Service độc lập (`llama.cpp server`)** do Backend quản lý vòng đời, và giao tiếp thông qua **Python Client qua mạng nội bộ (`127.0.0.1:8081`)**.
+2. **Nâng Cấp Mô Hình Lượng Hóa Thế Hệ Mới (`gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf`):**
+   - Sử dụng mô hình `gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` (~2.62 GB) được huấn luyện nhận thức lượng hóa (QAT - Quantization-Aware Training) và Unsloth Dynamic Quantization (`UD-Q4_K_XL`), mang lại chất lượng dịch thuật học thuật tiếng Việt vượt trội.
+3. **Tối Ưu Phần Cứng Chuyên Sâu Trên Intel Core i5-13500H & Trần 8GB RAM:**
+   - **Khai thác 4 P-cores:** Cấu hình `llama.cpp` sử dụng đúng **4 Performance-cores (P-cores)** trên vi xử lý **Intel Core i5-13500H** (`--threads 4 --threads-batch 4`), tránh hiện tượng hệ điều hành điều phối luồng tính toán nặng sang các nhân tiết kiệm điện (E-cores) gây giảm tốc độ.
+   - **Cho phép tăng tốc phần cứng (Hardware Acceleration):** Bật hỗ trợ tăng tốc phần cứng, tập lệnh vector hóa AVX2/VNNI và **Flash Attention (`--flash-attn`)**.
+   - **Giới hạn trần cứng $\le 8.0\text{ GB}$ RAM:** Đảm bảo tổng bộ nhớ tiêu thụ của tiến trình `llama.cpp server` luôn nằm dưới ngưỡng **8.0 GB RAM** (thực tế ở cấu hình 16K context với KV Cache Q8_0 chỉ tiêu tốn ~3.8 GB – 4.5 GB RAM).
+4. **Quy Tắc Ngân Sách Từ & Chống Tràn Ngữ Cảnh Tuyệt Đối (Word-Budget & Zero Context Overflow):**
+   - **Input (2,000 – 2,500 từ tiếng Anh):** Mỗi lượt gọi tới `llama.cpp server` phải đóng gói tổng cộng **System Prompt + Văn bản tiếng Anh của bài báo** nằm trong khoảng **2,000 đến 2,500 từ tiếng Anh** (~3,000 – 3,800 tokens).
+   - **Output Tiếng Việt Dự Phòng Gấp 2.0 – 2.5 Lần:** Khi dịch từ tiếng Anh sang tiếng Việt học thuật, số lượng từ và số lượng token sẽ nở ra gấp **2.0 – 2.5 lần** (~6,500 – 9,500 tokens).
+   - **Tối ưu cửa sổ ngữ cảnh 16K / 8K:** Cấu hình chuẩn **`n_ctx = 16384` (16K tokens)** với `max_tokens = 10240` để tổng `Input (~3,800) + Output (~9,500) = ~13,300 tokens` luôn nằm gọn trong cửa sổ ngữ cảnh, cam kết **0% nguy cơ tràn context**. Đồng thời hỗ trợ cấu hình `n_ctx = 8192` (8K tokens) cho chế độ lô thu gọn.
+5. **Bộ Điều Phối Tuần Tự Tài Nguyên (Sequential Mutex Scheduling):**
+   - Indra OCR (~1.5GB–2.0GB RAM) chạy xong phải thu hồi sạch 100% tài nguyên (`unload()`, hủy ONNX sessions, `pool.shutdown()`, `gc.collect()`) trước khi khởi chạy/gọi tiến trình `llama.cpp server`.
 
 ---
 
-## 2. Sơ Đồ Kiến Trúc Hệ Thống AI (AI Architecture Diagram)
+## 2. Sơ Đồ Kiến Trúc Hệ Thống AI (AI Architecture Diagram v3.3)
 
 ```mermaid
 flowchart TD
@@ -36,79 +39,56 @@ flowchart TD
     end
 
     subgraph MutexStage ["2. Thu Hồi Tài Nguyên Tuần Tự (Sequential Mutex)"]
-        Filter --> OCRCleanup["IndraOcrService.unload()<br>• pool.shutdown(wait=False)<br>• del ONNX InferenceSessions<br>• gc.collect() -> RAM trở về tối thiểu"]
+        Filter --> OCRCleanup["IndraOcrService.unload()<br>• pool.shutdown(wait=False)<br>• del ONNX InferenceSessions<br>• gc.collect() -> Giải phóng 100% RAM OCR"]
     end
 
-    subgraph Stage2 ["3. Điều Phối Kênh Dịch Thuật (Local-First Default)"]
-        OCRCleanup --> Router{"Kiểm Tra Provider<br>(Mặc định: Local LLM)"}
-        Router -->|Local-First (Mặc định)<br>Qwen3-1.7B GGUF| LocalEngine["LlamaCppService (In-Process)<br>n_ctx=8192 (~2.8GB RAM) <= 4GB Trần Cứng<br>Adaptive Batching (~1,500 tokens / batch)"]
-        Router -->|Cloud Option<br>Gemini API 1M Context| CloudEngine["GeminiTranslator<br>Single-Call toàn bài (max_tokens=65536)"]
+    subgraph Stage2 ["3. Điều Phối Kênh Dịch & Phân Lô Theo Số Từ (Local-First Default)"]
+        OCRCleanup --> Router{"Kiểm Tra Provider<br>(Mặc định: llama_cpp)"}
+        Router -->|Local-First (Mặc định)| WordBatcher["Word-Aware Batcher<br>Đóng gói: System Prompt + Paper Text<br>= 2,000 - 2,500 từ tiếng Anh (~3,000-3,800 tokens)"]
+        Router -->|Cloud Option| CloudEngine["GeminiTranslator<br>Single-Call toàn bài (max_tokens=65536)"]
     end
 
-    subgraph ExecutionStage ["4. Thực Thi Suy Luận & Bóc Tách Nhãn"]
-        LocalEngine --> InferEngine["llama-cpp-python suy luận CPU đa luồng"]
-        CloudEngine --> APIEngine["HTTP Client (httpx) -> /v1/chat/completions"]
-        InferEngine --> Parser["Block Unpacker & Regex [[BLK_XXXX]]"]
+    subgraph StandaloneStage ["4. Dịch Vụ Serving Riêng Lẻ & Giao Tiếp Mạng Nội Bộ"]
+        WordBatcher --> PyClient["Python Async HTTP Client (httpx)<br>Giao tiếp qua Loopback 127.0.0.1:8081"]
+        PyClient <-->|POST /v1/chat/completions<br>max_tokens=10240 (dự phòng 2-2.5x)| LlamaSrv["Standalone llama.cpp Server Process<br>• Model: gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf<br>• CPU: 4 P-Cores i5-13500H + HW Accel<br>• Context: 16K (16384) / 8K • RAM <= 8GB"]
+        CloudEngine --> APIEngine["HTTP Client -> Google Cloud API"]
+        PyClient --> Parser["Block Unpacker & Regex [[BLK_XXXX]]"]
         APIEngine --> Parser
     end
 
     subgraph OutputStage ["5. Đồng Bộ Tiến Độ & Hiển Thị"]
-        Parser --> SSE["ProgressCallback -> SSE Broadcaster<br>(phase: ocr -> cleanup -> translating_local)"]
+        Parser --> SSE["ProgressCallback -> SSE Broadcaster"]
         SSE --> DB[(SQLite paper_pages & ocr_blocks)]
-        DB --> UIIndicator["Cập nhật UI Engine Badge: 'Local LLM: Qwen3-1.7B'"]
+        DB --> UIIndicator["Cập nhật UI Engine Badge:<br>'Local LLM: Gemma-4-E2B (16K Ctx • 4 P-Cores)'"]
     end
-```
 ```
 
 ---
 
-## 3. Đặc Tả Các Thành Phần Kỹ Thuật
+## 3. Phân Tích Toán Học Ngân Sách Token, Bộ Nhớ & Cấu Hình Phần Cứng
 
-### 3.1. Chuẩn Hóa Endpoint OpenAI-Compatible (`normalized_llm_endpoint`)
+### 3.1. Bảng Cân Đối Ngân Sách Từ & Token (Word & Token Budget Matrix)
 
-Tất cả các nguồn mô hình được tự động nhận diện và chuẩn hóa về đường dẫn `/chat/completions`:
+| Thông số | Giá trị định mức | Quy đổi Token (Gemma Tokenizer) | Giải thích kỹ thuật |
+|---|---|---|---|
+| **System Prompt (Chỉ dẫn + Glossary)** | ~250 – 350 từ tiếng Anh | ~350 – 500 tokens | Chứa quy tắc bảo toàn `[[BLK_XXXX]]`, LaTeX `$..$`, `<table>` và thuật ngữ CNTT/AI. |
+| **Văn bản Bài báo trong 1 Batch** | **1,750 – 2,150 từ tiếng Anh** | ~2,650 – 3,300 tokens | Gom các khối `ocr_blocks` liên tiếp sao cho tổng cùng System Prompt đạt **2,000 – 2,500 từ tiếng Anh**. |
+| **Tổng Input mỗi Batch** | **2,000 – 2,500 từ tiếng Anh** | **~3,000 – 3,800 tokens** | Đảm bảo ngữ cảnh liền mạch của cả một phần lớn (1.5 – 3 trang bài báo 2 cột). |
+| **Hệ số giãn nở Tiếng Việt** | **Gấp 2.0 – 2.5 lần tiếng Anh** | **~6,500 – 9,500 tokens** | Tiếng Việt học thuật nhiều âm tiết + dấu thanh + giữ nguyên thẻ `[[BLK_XXXX]]` và công thức LaTeX. |
+| **Trần cấp phát Output (`max_tokens`)** | Dư dả tuyệt đối | **`10,240` tokens** | Luôn lớn hơn mức tối đa 9,500 tokens để câu dịch không bao giờ bị cắt ngang (`finish_reason != "length"`). |
+| **Tổng Context Window (`n_ctx`)** | **16K (`16,384` tokens)** *(Mặc định)* | `3,800 + 10,240 = 14,040 <= 16,384` | Dư hơn 2,300 tokens đệm an toàn. (Hỗ trợ chế độ `8,192` tokens khi cấu hình batch thu gọn). |
 
-| Nền tảng / Provider | URL Gốc Cấu Hình | Endpoint Tự Động Chuẩn Hóa |
+### 3.2. Cấu Hình Tối Ưu `llama.cpp` Server Trên Intel Core i5-13500H (RAM $\le 8\text{GB}$)
+
+| Tham số `llama.cpp` Server | Giá trị cấu hình | Lý do tối ưu hóa trên Laptop Intel Core i5-13500H |
 |---|---|---|
-| **Google Gemini** | `https://generativelanguage.googleapis.com/v1beta/openai` | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` |
-| **OpenAI ChatGPT** | `https://api.openai.com/v1` | `https://api.openai.com/v1/chat/completions` |
-| **Ollama Local** | `http://localhost:11434` (hoặc `/v1`) | `http://localhost:11434/v1/chat/completions` |
-| **LM Studio Local** | `http://localhost:1234` (hoặc `/v1`) | `http://localhost:1234/v1/chat/completions` |
-| **Llama.cpp Local** | `http://localhost:8080` (hoặc `/v1`) | `http://localhost:8080/v1/chat/completions` |
-| **Model Tự Host (vLLM / FastChat)** | `http://192.168.1.x:8000/v1` | `http://192.168.1.x:8000/v1/chat/completions` |
-
-### 3.2. Bộ Lọc Thông Minh (Smart Pre-Filter)
-
-- **Nguyên tắc**: Tiết kiệm tối đa 25% – 35% dung lượng token đầu vào/đầu ra và bảo tồn tính chính xác cho các danh mục không cần dịch.
-- **Quy tắc phân loại**:
-  - `is_translatable = False`:
-    - Các khối có `label` là `page header`, `page footer` (số trang, tên hội nghị).
-    - Các khối có `label` là `figure`, `picture` (hình ảnh sơ đồ).
-    - Toàn bộ các khối nằm sau tiêu đề `References` hoặc `Bibliography` (tài liệu tham khảo quốc tế giữ nguyên tiếng Anh để tra cứu).
-  - `is_translatable = True`: Toàn bộ các khối nội dung (`title`, `section header`, `text`, `table`, `caption`, `footnote`, `list`).
-
-### 3.3. Xử Lý Sự Cố Khi Gọi API (Incident & Retry Management)
-
-Dịch vụ áp dụng chiến lược tự phục hồi theo tiêu chuẩn cấp độ doanh nghiệp:
-1. **Lỗi Rate Limit (HTTP 429):**
-   - Đọc giá trị từ header `Retry-After`.
-   - Nếu không có header, tự động giãn cách theo công thức: $\Delta t = \text{retry\_delay} \times 2^{(\text{attempt} - 1)}$.
-   - Phát thông báo qua `ProgressCallback` để UI hiển thị trạng thái chờ minh bạch.
-2. **Lỗi Máy chủ Tạm thời (HTTP 500, 502, 503, 504):**
-   - Tự động thử lại tối đa `LLM_MAX_RETRIES` (mặc định 3 lần).
-3. **Sự cố Kết nối Mạng (`httpx.NetworkError`, `httpx.TimeoutException`):**
-   - Bắt ngoại lệ và kích hoạt retry tự động.
-4. **Vượt Quá Giới Hạn Ngữ Cảnh (HTTP 400 Context Length Exceeded):**
-   - Bắt riêng `ContextLengthExceededError`.
-   - Tự động phân tách danh sách khối thành các batch nhỏ hơn và dịch tuần tự bằng **Adaptive Batching**.
-5. **Dự Phòng An Toàn (Safe Fallback):**
-   - Khi cạn kiệt số lần thử lại, hệ thống tự động fallback sang `MockTranslator` để bảo vệ pipeline không bị dừng đột ngột, đảm bảo giữ nguyên mã `[[BLK_XXXX]]` và công thức toán học.
-
-### 3.4. Thu Hồi Tài Nguyên Phần Cứng Triệt Để (Hardware Resource Reclamation)
-
-Nhằm đảm bảo hệ thống không chiếm dụng CPU và RAM sau khi chạy mô hình OCR và dịch thuật:
-1. **Dừng ThreadPool:** Gọi `ocr.pool.shutdown(wait=False, cancel_futures=True)` trên `IndraOcrService` để giải phóng toàn bộ các luồng worker threads.
-2. **Giải Phóng Bộ Nhớ ONNX:** Gán `None` cho toàn bộ các `InferenceSession` (`det`, `rec`, `order`, `orient`, `mask`, `math`) và xóa từ điển bộ nhớ đệm `groups`, `lms`.
-3. **Xóa Bộ Nhớ Đệm Ảnh (Pixmaps):** Xóa tường minh `del pix` sau mỗi trang kết xuất ảnh Layer 0 (200 DPI).
-4. **Bảo Đảm Bằng Khối `finally:`**: Toàn bộ quá trình giải phóng tài nguyên được bọc trong khối `finally:` của tiến trình nền, luôn luôn thực thi kể cả khi gặp lỗi.
-5. **Garbage Collection:** Kích hoạt `gc.collect()` ép Python giải phóng bộ nhớ heap C++ và RAM ngay lập tức.
+| `--model` (`-m`) | `storage/models/gemma-4-E2B-it-qat-UD-Q4_K_XL.gguf` | Mô hình Gemma 4 E2B Instruction-Tuned QAT (~2.62 GB trên đĩa). |
+| `--host` / `--port` | `127.0.0.1` / `8081` | Chỉ lắng nghe trên mạng nội bộ (Loopback) để Python Client của Backend kết nối an toàn. |
+| `--threads` (`-t`) | **`4`** | Khớp chính xác **4 P-cores (Performance Cores)** của Intel Core i5-13500H, tránh tràn sang E-cores làm chậm toàn cục. |
+| `--threads-batch` (`-tb`) | **`4`** | Tăng tốc độ xử lý Prompt (Prompt Evaluation) trên 4 nhân P-cores cho gói 2,000–2,500 từ. |
+| `--ctx-size` (`-c`) | **`16384`** *(hoặc `8192`)* | Đảm bảo chứa trọn Input (2,000–2,500 từ EN) + Output tiếng Việt (gấp 2–2.5x) không tràn context. |
+| `--batch-size` (`-b`) / `-ub` | `512` / `512` | Tăng tốc độ đọc hiểu 3,500 tokens đầu vào chỉ trong vài giây. |
+| `--flash-attn` (`-fa`) | `on` (Enabled) | Tăng tốc tính toán ma trận Attention trên ngữ cảnh dài 16K và giảm mạnh bộ nhớ KV Cache. |
+| `--cache-type-k` / `-v` | `q8_0` / `q8_0` | Lượng hóa KV Cache về 8-bit giúp giữ nguyên 100% chất lượng dịch trong khi giảm 50% RAM của KV Cache. |
+| `--n-gpu-layers` (`-ngl`) | `auto` / cấu hình phần cứng | Cho phép tận dụng tăng tốc phần cứng (GPU/iGPU nếu khả dụng) kết hợp 4 P-cores CPU. |
+| **Tổng RAM chiếm dụng** | **~3.8 GB – 4.5 GB RAM** | Nằm hoàn toàn dưới **trần cứng $\le 8.0\text{ GB}$ RAM** đã quy định. |

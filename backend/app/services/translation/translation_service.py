@@ -12,16 +12,18 @@ from app.repositories.session_repository import SessionRepository
 from app.services.sse_broadcaster import broadcaster
 from app.services.translation.adaptive_batcher import AdaptiveBatcher
 from app.services.translation.gemini_translator import GeminiTranslator
-from app.services.translation.llama_service import LlamaCppService
+from app.services.translation.llama_client_service import LlamaInternalClient
+from app.services.translation.llama_server_manager import LlamaServerManager
 from app.services.translation.translator import BaseTranslator
 
 
 class TranslationService:
     """
     Dịch vụ điều phối dịch thuật hỗ trợ hai chế độ:
-    1. Local-First: Chạy ngoại tuyến mô hình Qwen3 GGUF qua LlamaCppService với
-       phân lô thích ứng (Adaptive Batching 6-8 khối / ~1500 tokens), bảo toàn mã [[BLK_XXXX]],
-       công thức toán LaTeX, và giới hạn trần cứng <= 4.0 GB RAM.
+    1. Local-First Standalone Serving: Quản lý tiến trình độc lập llama.cpp server
+       chạy mô hình Gemma-4-E2B Q4_K_XL với tối ưu 4 P-cores trên Intel Core i5-13500H,
+       phân lô 2000 - 2500 từ tiếng Anh, giao tiếp qua Python Client mạng nội bộ (127.0.0.1:8081),
+       dự phòng output tiếng Việt nở 2.0x - 2.5x và giới hạn trần cứng <= 8.0 GB RAM.
     2. Cloud Option: Dịch Single-Call qua Google Gemini hoặc các mô hình OpenAI-Compatible.
     """
 
@@ -29,13 +31,14 @@ class TranslationService:
         self.raw_translator = translator
         self.gemini_translator = GeminiTranslator(translator=translator)
         self.batcher = AdaptiveBatcher()
+        self.llama_client = LlamaInternalClient()
 
     async def _translate_with_local_llm(
         self,
         blocks: list[OcrBlockModel],
         progress_callback: Callable[[int, int, str], Any] | None = None,
     ) -> dict[str, str]:
-        """Thực thi dịch thuật cục bộ bằng mô hình Qwen3 GGUF với Adaptive Batching."""
+        """Thực thi dịch thuật cục bộ qua Standalone llama.cpp Server bằng Python Client nội bộ."""
         # Áp dụng bộ lọc thông minh loại bỏ References, header/footer, figure
         self.gemini_translator.apply_smart_filter(blocks)
 
@@ -56,22 +59,21 @@ class TranslationService:
         total_blocks = len(translatable_blocks)
         processed_blocks = 0
 
-        # Lấy thể hiện Singleton của LlamaCppService
-        if not LlamaCppService._instance or not LlamaCppService._instance.is_loaded:
+        # Đảm bảo Standalone llama.cpp Server đang chạy và phản hồi
+        server_mgr = LlamaServerManager.get_instance()
+        if not server_mgr.is_running or not await server_mgr.is_healthy_async():
             if progress_callback:
-                res = progress_callback(0, total_blocks, f"Đang nạp mô hình Qwen3 GGUF ({settings.LLM_MODEL_NAME}) vào RAM...")
+                res = progress_callback(0, total_blocks, f"Đang khởi động Standalone llama.cpp Server ({settings.LLM_MODEL_NAME})...")
                 if asyncio.iscoroutine(res):
                     await res
-
-        llama_service = LlamaCppService.get_instance()
-        loop = asyncio.get_running_loop()
+            await server_mgr.ensure_server_running()
 
         for batch_idx, batch in enumerate(batches):
             b_start_idx = processed_blocks + 1
             b_end_idx = processed_blocks + len(batch)
 
             if progress_callback:
-                msg = f"Đang suy luận qua Qwen3 Local LLM: Lô {batch_idx + 1}/{len(batches)} (khối {b_start_idx}-{b_end_idx}/{total_blocks})..."
+                msg = f"Đang suy luận qua Gemma-4-E2B Local Server: Lô {batch_idx + 1}/{len(batches)} (khối {b_start_idx}-{b_end_idx}/{total_blocks})..."
                 res = progress_callback(processed_blocks, total_blocks, msg)
                 if asyncio.iscoroutine(res):
                     await res
@@ -85,15 +87,11 @@ class TranslationService:
             import time
             t0 = time.time()
 
-            # Chạy suy luận trong thread pool để không block asyncio loop
-            max_out_tokens = getattr(settings, "LLM_LOCAL_MAX_OUTPUT_TOKENS", 5120)
-            response = await loop.run_in_executor(
-                None,
-                lambda: llama_service.create_chat_completion(
-                    messages=messages,
-                    temperature=settings.LLM_TEMPERATURE,
-                    max_tokens=max_out_tokens,
-                ),
+            max_out_tokens = getattr(settings, "LLM_LOCAL_MAX_OUTPUT_TOKENS", 10240)
+            response = await self.llama_client.create_chat_completion(
+                messages=messages,
+                temperature=settings.LLM_TEMPERATURE,
+                max_tokens=max_out_tokens,
             )
             elapsed = time.time() - t0
             logger.info(
@@ -115,13 +113,10 @@ class TranslationService:
                             await res
 
                     fb_messages = self.batcher.build_single_fallback_messages(missing_b)
-                    fb_resp = await loop.run_in_executor(
-                        None,
-                        lambda: llama_service.create_chat_completion(
-                            messages=fb_messages,
-                            temperature=settings.LLM_TEMPERATURE,
-                            max_tokens=2048,
-                        ),
+                    fb_resp = await self.llama_client.create_chat_completion(
+                        messages=fb_messages,
+                        temperature=settings.LLM_TEMPERATURE,
+                        max_tokens=2048,
                     )
                     fb_map, _ = self.batcher.parse_response(fb_resp, [missing_b])
                     if missing_b.block_code in fb_map:
@@ -144,9 +139,9 @@ class TranslationService:
         """Tiến trình dịch thuật toàn bộ bài báo theo cơ chế Local-First hoặc Cloud."""
         is_local = (
             self.raw_translator is None
-            and settings.LLM_PROVIDER.lower() in ("llama_cpp", "local", "qwen")
+            and settings.LLM_PROVIDER.lower() in ("llama_cpp", "local", "gemma", "qwen")
         )
-        engine_label = "Local LLM (Qwen3 GGUF)" if is_local else "Cloud API (Gemini/OpenAI)"
+        engine_label = f"Local LLM ({settings.LLM_MODEL_NAME})" if is_local else "Cloud API (Gemini/OpenAI)"
         logger.info(f"[{session_id}] Bắt đầu tiến trình dịch thuật với {engine_label}...")
 
         async with AsyncSessionLocal() as db:

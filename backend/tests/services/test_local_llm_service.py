@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -6,49 +6,68 @@ from httpx import ASGITransport, AsyncClient
 from app.main import create_app
 from app.models.ocr_block import OcrBlockModel
 from app.services.translation.adaptive_batcher import AdaptiveBatcher
+from app.services.translation.llama_client_service import LlamaInternalClient
+from app.services.translation.llama_server_manager import LlamaServerManager
 from app.services.translation.llama_service import LlamaCppService
 
 
 class TestLlamaCppService:
     def setup_method(self):
+        LlamaServerManager.reset()
         LlamaCppService.reset()
 
     def teardown_method(self):
+        LlamaServerManager.reset()
         LlamaCppService.reset()
 
     def test_hard_ram_ceiling_violation_raises_error(self):
-        """Kiểm tra rào chắn trần cứng: Cấm n_ctx > 16384 (<= 4.0GB RAM)."""
+        """Kiểm tra rào chắn trần cứng: Cấm n_ctx > 16384 (<= 8.0GB RAM)."""
         with pytest.raises(ValueError, match="vượt quá giới hạn trần cứng"):
-            LlamaCppService(n_ctx=32768)
+            LlamaServerManager(n_ctx=32768)
 
     def test_missing_model_file_raises_filenotfound(self, tmp_path):
         """Kiểm tra xử lý lỗi an toàn khi không tìm thấy tệp mô hình GGUF."""
         fake_path = tmp_path / "non_existent_model.gguf"
         with pytest.raises(FileNotFoundError, match="Không tìm thấy tệp mô hình GGUF"):
-            LlamaCppService(model_path=fake_path, n_ctx=4096)
+            LlamaServerManager(model_path=fake_path, n_ctx=4096)
 
-    @patch("llama_cpp.Llama")
-    def test_singleton_initialization_and_unload(self, mock_llama_cls, tmp_path):
-        """Kiểm tra mô hình Singleton và thu hồi bộ nhớ qua unload()."""
+    def test_server_manager_singleton_and_cleanup(self, tmp_path):
+        """Kiểm tra LlamaServerManager Singleton pattern và dọn dẹp tiến trình."""
         mock_model_file = tmp_path / "test_model.gguf"
         mock_model_file.write_text("dummy")
 
-        mock_instance = MagicMock()
-        mock_llama_cls.return_value = mock_instance
+        mgr1 = LlamaServerManager.get_instance(model_path=mock_model_file, n_ctx=8192)
+        mgr2 = LlamaServerManager.get_instance(model_path=mock_model_file, n_ctx=8192)
+        assert mgr1 is mgr2
 
-        # Lần gọi 1
-        service1 = LlamaCppService.get_instance(model_path=mock_model_file, n_ctx=8192)
-        assert service1.is_loaded is True
+        LlamaServerManager.reset()
+        assert LlamaServerManager._instance is None
 
-        # Lần gọi 2 phải trả về cùng một instance (Singleton)
-        service2 = LlamaCppService.get_instance(model_path=mock_model_file, n_ctx=8192)
-        assert service1 is service2
-        assert mock_llama_cls.call_count == 1
 
-        # Thu hồi tài nguyên
-        service1.unload()
-        assert service1.is_loaded is False
-        assert LlamaCppService._instance is None
+@pytest.mark.asyncio
+class TestLlamaInternalClient:
+    async def test_client_chat_completion_mocked(self):
+        """Kiểm tra Python Client giao tiếp với Standalone llama.cpp Server qua mock HTTP."""
+        mock_mgr = MagicMock(spec=LlamaServerManager)
+        mock_mgr.ensure_server_running = AsyncMock()
+
+        client = LlamaInternalClient(base_url="http://127.0.0.1:8081", server_manager=mock_mgr)
+
+        with patch("httpx.AsyncClient.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {
+                "choices": [{"message": {"content": "[[BLK_0001]]\nBản dịch tiếng Việt thử nghiệm"}}]
+            }
+            mock_resp.raise_for_status = MagicMock()
+            mock_post.return_value = mock_resp
+
+            result = await client.create_chat_completion(
+                messages=[{"role": "user", "content": "Hello"}]
+            )
+
+            assert "Bản dịch tiếng Việt thử nghiệm" in result
+            mock_mgr.ensure_server_running.assert_awaited_once()
 
 
 class TestAdaptiveBatcher:
@@ -200,14 +219,16 @@ class TestAdaptiveBatcher:
 @pytest.mark.asyncio
 class TestSystemEngineAPI:
     async def test_get_engine_status(self):
-        """Kiểm tra endpoint GET /api/v1/system/engine-status trả về đúng thông số."""
+        """Kiểm tra endpoint GET /api/v1/system/engine-status trả về đúng thông số v3.3."""
         app = create_app()
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.get("/api/v1/system/engine-status")
             assert resp.status_code == 200
             data = resp.json()
             assert "active_provider" in data
-            assert data["hard_ram_ceiling_gb"] == 4.0
+            assert data["hard_ram_ceiling_gb"] == 8.0
+            assert data["serving_mode"] == "standalone_server"
+            assert data["threads"] == 4
             assert "estimated_ram_usage_gb" in data
 
     async def test_engine_switch_validation(self):
@@ -232,12 +253,12 @@ class TestSystemEngineAPI:
             assert resp_gemini.json()["active_provider"] == "gemini"
             assert resp_gemini.json()["is_local"] is False
 
-            # 4. Chuyển về Local LLM (nếu có file model Qwen3 có sẵn trong storage/models)
+            # 4. Chuyển về Local LLM (mô hình Gemma-4-E2B có sẵn trong storage/models)
             resp_local = await client.post(
                 "/api/v1/system/engine-switch",
-                json={"provider": "llama_cpp", "context_window": 8192},
+                json={"provider": "llama_cpp", "context_window": 16384},
             )
             assert resp_local.status_code == 200
             assert resp_local.json()["active_provider"] == "llama_cpp"
             assert resp_local.json()["is_local"] is True
-            assert resp_local.json()["context_window"] == 8192
+            assert resp_local.json()["context_window"] == 16384

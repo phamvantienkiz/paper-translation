@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.services.translation.llama_server_manager import LlamaServerManager
 from app.services.translation.llama_service import LlamaCppService
 
 router = APIRouter(prefix="/system", tags=["System Engine"])
@@ -16,6 +17,9 @@ class EngineStatusResponse(BaseModel):
     estimated_ram_usage_gb: float
     ocr_loaded: bool
     llm_loaded: bool
+    serving_mode: str
+    threads: int
+    standalone_server_url: str
 
 
 class EngineSwitchRequest(BaseModel):
@@ -28,16 +32,19 @@ class EngineSwitchRequest(BaseModel):
 @router.get("/engine-status", response_model=EngineStatusResponse)
 async def get_engine_status() -> EngineStatusResponse:
     """
-    Truy xuất trạng thái hoạt động của Engine dịch thuật (Local LLM vs Cloud API)
+    Truy xuất trạng thái hoạt động của Engine dịch thuật (Local Standalone LLM vs Cloud API)
     và các thông số tài nguyên phần cứng thời gian thực.
     """
-    is_local = settings.LLM_PROVIDER.lower() in ("llama_cpp", "local", "qwen")
+    is_local = settings.LLM_PROVIDER.lower() in ("llama_cpp", "local", "gemma", "qwen")
     model_name = settings.LLM_MODEL_NAME if is_local else settings.LLM_MODEL
     context_window = settings.LLM_LOCAL_N_CTX if is_local else settings.LLM_MAX_CONTEXT_TOKENS
 
+    server_mgr = LlamaServerManager.get_instance()
     llm_loaded = False
-    if is_local and LlamaCppService._instance is not None:
-        llm_loaded = LlamaCppService._instance.is_loaded
+    if is_local:
+        llm_loaded = server_mgr.is_running and server_mgr.is_healthy()
+        if not llm_loaded and LlamaCppService._instance is not None:
+            llm_loaded = LlamaCppService._instance.is_loaded
 
     # Ước tính mức RAM sử dụng (nếu chạy local LLM)
     estimated_ram = settings.get_estimated_ram_usage_gb(settings.LLM_LOCAL_N_CTX) if is_local else 0.0
@@ -51,14 +58,17 @@ async def get_engine_status() -> EngineStatusResponse:
         estimated_ram_usage_gb=estimated_ram,
         ocr_loaded=False,  # OCR luôn được giải phóng sau giai đoạn bóc tách
         llm_loaded=llm_loaded,
+        serving_mode="standalone_server" if is_local else "cloud_api",
+        threads=settings.LLM_LOCAL_THREADS if is_local else 0,
+        standalone_server_url=settings.standalone_server_url if is_local else "",
     )
 
 
 @router.post("/engine-switch", response_model=EngineStatusResponse)
 async def switch_engine(payload: EngineSwitchRequest) -> EngineStatusResponse:
     """
-    Chuyển đổi Engine dịch thuật giữa Local LLM (llama.cpp Qwen3) và Cloud API (Gemini).
-    Rào chắn: Bắt buộc tuân thủ giới hạn context_window <= 16384 tokens (<= 4.0GB RAM).
+    Chuyển đổi Engine dịch thuật giữa Local Standalone LLM (Gemma-4-E2B) và Cloud API (Gemini).
+    Rào chắn: Bắt buộc tuân thủ giới hạn context_window <= 16384 tokens (<= 8.0GB RAM).
     """
     target_provider = payload.provider.strip().lower()
 
@@ -81,12 +91,13 @@ async def switch_engine(payload: EngineSwitchRequest) -> EngineStatusResponse:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Context window ({payload.context_window}) vượt quá giới hạn trần cứng cho phép "
-                    f"({settings.LLM_LOCAL_MAX_N_CTX} tokens / <= 4.0GB RAM).",
+                    f"({settings.LLM_LOCAL_MAX_N_CTX} tokens / <= 8.0GB RAM).",
                 )
             settings.LLM_LOCAL_N_CTX = payload.context_window
 
     elif target_provider == "gemini":
-        # Nếu chuyển sang Cloud, thu hồi bộ nhớ Local LLM để giải phóng RAM
+        # Nếu chuyển sang Cloud, dừng Standalone server và thu hồi bộ nhớ Local LLM để giải phóng RAM
+        LlamaServerManager.reset()
         LlamaCppService.reset()
 
     settings.LLM_PROVIDER = target_provider
