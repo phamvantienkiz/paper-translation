@@ -271,6 +271,15 @@ class IngestionService:
                         session_record.pdf_path = str(file_path)
                         await db.commit()
 
+                    # =========================================================
+                    # SEQUENTIAL MUTEX: Thu hồi 100% tài nguyên Indra OCR
+                    # Giải phóng ThreadPool, xóa ONNX sessions & gọi gc.collect()
+                    # để RAM trở về mức tối thiểu trước khi bước sang giai đoạn dịch
+                    # =========================================================
+                    self.indra_ocr_service.unload()
+                    gc.collect()
+                    logger.info(f"[{session_id}] Thu hồi sạch 100% tài nguyên Indra OCR thành công.")
+
                 elif source_type == "DOCX":
                     # Xử lý tệp DOCX (giữ nguyên quy trình bóc tách DOCX)
                     parsed_docx = self.docx_parser.parse(file_path, session_id)
@@ -315,80 +324,13 @@ class IngestionService:
                     )
 
                 # -------------------------------------------------------------
-                # Giai đoạn 2: TRANSLATING (Gemini Single-Call)
+                # Giai đoạn 2: TRANSLATING (Điều phối qua TranslationService: Local-First / Cloud)
                 # -------------------------------------------------------------
-                await session_repo.update_status(session_id, "TRANSLATING", progress_percent=50)
-                await broadcaster.emit(
-                    session_id,
-                    "progress_update",
-                    {
-                        "status": "TRANSLATING",
-                        "step": "TRANSLATING",
-                        "progress_percent": 50,
-                        "message": "Đang dịch toàn bộ bài báo trong 1 lần gọi qua Google Gemini API...",
-                    },
-                )
+                from app.services.translation.translation_service import TranslationService
+                translation_service = TranslationService(translator=self.gemini_translator.translator)
+                await translation_service.translate_session(session_id)
 
-                if source_type in ("PDF", "ARXIV"):
-                    async def on_translation_progress(current: int, total: int, msg: str) -> None:
-                        pct = 50 + int((current / max(1, total)) * 45)  # 50% -> 95%
-                        await session_repo.update_status(session_id, "TRANSLATING", progress_percent=pct)
-                        await broadcaster.emit(
-                            session_id,
-                            "progress_update",
-                            {
-                                "status": "TRANSLATING",
-                                "step": "TRANSLATING",
-                                "progress_percent": pct,
-                                "message": msg,
-                                "current": current,
-                                "total": total,
-                            },
-                        )
-
-                    db_blocks = await block_repo.get_by_session_id(session_id)
-                    translated_map = await self.gemini_translator.translate_blocks(
-                        db_blocks, progress_callback=on_translation_progress
-                    )
-
-                    # Ánh xạ bản dịch vào ocr_blocks
-                    block_updates = []
-                    for b in db_blocks:
-                        if b.block_code in translated_map:
-                            b.translated_text = translated_map[b.block_code]
-                            block_updates.append({"id": b.id, "translated_text": b.translated_text})
-                    if block_updates:
-                        await block_repo.bulk_update_translations(block_updates)
-
-                    # Đồng bộ sang segments cho Dual-Pane UI
-                    db_segments = await segment_repo.get_by_session_id(session_id)
-                    for idx, seg in enumerate(db_segments):
-                        if idx < len(db_blocks):
-                            code = db_blocks[idx].block_code
-                            seg_trans = translated_map.get(code)
-                            if seg_trans:
-                                await segment_repo.update_translation(seg.id, seg_trans)
-
-                elif source_type == "DOCX":
-                    from app.services.translation.translation_service import TranslationService
-                    translation_service = TranslationService()
-                    await translation_service.translate_session(session_id)
-
-                # -------------------------------------------------------------
-                # Giai đoạn 3: COMPLETED
-                # -------------------------------------------------------------
-                await session_repo.update_status(session_id, "COMPLETED", progress_percent=100)
-                await broadcaster.emit(
-                    session_id,
-                    "completed",
-                    {
-                        "status": "COMPLETED",
-                        "step": "COMPLETED",
-                        "progress_percent": 100,
-                        "message": "Hoàn tất! Sẵn sàng tái hiện bài báo trên HTML Canvas.",
-                    },
-                )
-                logger.info(f"[{session_id}] Toàn bộ pipeline v3.1 hoàn tất 100%.")
+                logger.info(f"[{session_id}] Toàn bộ pipeline xử lý bài báo hoàn tất 100%.")
 
             except Exception as e:
                 logger.exception(f"[{session_id}] Lỗi trong tiến trình xử lý bài báo: {e}")
@@ -399,10 +341,14 @@ class IngestionService:
                     await db.commit()
                 await broadcaster.emit(
                     session_id,
-                    "error",
-                    {"status": "FAILED", "step": "FAILED", "message": f"Lỗi xử lý tài liệu: {str(e)}"},
+                    "failed",
+                    {
+                        "status": "FAILED",
+                        "step": "FAILED",
+                        "message": f"Xử lý thất bại: {e}",
+                    },
                 )
             finally:
-                # Thu hồi toàn bộ tài nguyên phần cứng (ONNX InferenceSessions, ThreadPool, memory buffers)
+                # Đảm bảo tài nguyên OCR được thu hồi trong mọi trường hợp (kể cả exception)
                 self.indra_ocr_service.unload()
                 gc.collect()

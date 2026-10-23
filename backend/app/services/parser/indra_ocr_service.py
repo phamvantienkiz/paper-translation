@@ -76,6 +76,11 @@ class IndraOcrService:
         self._converter = None
         self._init_attempted = False
 
+    @property
+    def is_loaded(self) -> bool:
+        """Kiểm tra xem mô hình Indra OCR converter có đang nạp trong RAM hay không."""
+        return self._converter is not None
+
     def _get_converter(self):
         if not self._init_attempted:
             self._init_attempted = True

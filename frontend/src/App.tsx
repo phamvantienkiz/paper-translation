@@ -7,10 +7,12 @@ import {
   CanvasData,
   DisplayMode,
   ProgressEvent,
+  EngineStatus,
 } from './types';
 import { UploadModal } from './components/UploadModal';
 import { CanvasPaperViewer } from './components/CanvasPaperViewer';
 import { DualPaneReader } from './components/DualPaneReader';
+import { EngineStatusModal } from './components/EngineStatusModal';
 import {
   BookOpen,
   Plus,
@@ -24,6 +26,7 @@ import {
   Cpu,
   ChevronDown,
   Trash2,
+  Cloud,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -39,6 +42,18 @@ export const App: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isSessionDropdownOpen, setIsSessionDropdownOpen] = useState<boolean>(false);
   const [liveProgress, setLiveProgress] = useState<ProgressEvent | null>(null);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
+  const [isEngineModalOpen, setIsEngineModalOpen] = useState<boolean>(false);
+
+  // Tải trạng thái Engine (Local LLM vs Cloud API)
+  const loadEngineStatus = useCallback(async () => {
+    try {
+      const res = await api.getEngineStatus();
+      setEngineStatus(res);
+    } catch (err) {
+      console.error('Error fetching engine status:', err);
+    }
+  }, []);
 
   // Tải danh sách phiên bài báo gần đây
   const loadSessions = useCallback(async () => {
@@ -78,7 +93,8 @@ export const App: React.FC = () => {
   // Khởi tạo ban đầu
   useEffect(() => {
     loadSessions();
-  }, [loadSessions]);
+    loadEngineStatus();
+  }, [loadSessions, loadEngineStatus]);
 
   // Khi currentSessionId thay đổi
   useEffect(() => {
@@ -187,7 +203,7 @@ export const App: React.FC = () => {
             <h1 className="text-sm font-bold text-slate-900 leading-tight flex items-center gap-2">
               Paper Translation
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-50 text-academic-navy font-semibold border border-blue-200">
-                v3.1 Layout-Preserving
+                v3.2 Local-First
               </span>
             </h1>
             <p className="text-[11px] text-slate-500 hidden sm:block">
@@ -198,7 +214,7 @@ export const App: React.FC = () => {
 
         {/* View Mode Switcher: Canvas vs Dual-Pane */}
         {currentSession && (
-          <div className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="hidden xl:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               onClick={() => setDisplayMode('CANVAS')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
@@ -227,8 +243,38 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Action Controls */}
+        {/* Action Controls & Engine Badge */}
         <div className="flex items-center gap-2.5">
+          {/* Engine Status Badge (Local LLM vs Cloud API) */}
+          {engineStatus && (
+            <button
+              onClick={() => setIsEngineModalOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                engineStatus.is_local
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100/80 shadow-xs'
+                  : 'bg-blue-50 text-academic-navy border-blue-200 hover:bg-blue-100/80 shadow-xs'
+              }`}
+              title="Nhấp để cấu hình Engine dịch thuật hoặc kích thước Context Window"
+            >
+              {engineStatus.is_local ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              ) : (
+                <Cloud className="w-3.5 h-3.5 text-academic-navy shrink-0" />
+              )}
+              <span className="hidden sm:inline font-medium">
+                {engineStatus.is_local
+                  ? `Local LLM: Qwen3 (${(engineStatus.context_window / 1024).toFixed(0)}K Ctx • ${engineStatus.estimated_ram_usage_gb}GB)`
+                  : `Cloud API: Gemini (Single-Call)`}
+              </span>
+              <span className="sm:hidden font-medium">
+                {engineStatus.is_local ? 'Local' : 'Cloud'}
+              </span>
+              <span className="text-[10px] bg-white/90 px-1 py-0.5 rounded border border-slate-200/60 font-mono text-slate-600">
+                {engineStatus.is_local ? 'Offline' : 'Online'}
+              </span>
+            </button>
+          )}
+
           {/* Session Selector Dropdown */}
           <div className="relative">
             <button
@@ -342,14 +388,32 @@ export const App: React.FC = () => {
       {/* SSE Live Progress Banner */}
       {liveProgress && (
         <div className="bg-blue-50 border-b border-blue-200 px-6 py-2.5 flex items-center justify-between text-xs text-academic-navy z-20 animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <RefreshCw className="w-4 h-4 animate-spin text-academic-navy shrink-0" />
             <span className="font-semibold">
               {liveProgress.message ||
                 (liveProgress.status === 'PARSING'
                   ? 'Đang bóc tách cấu trúc tài liệu bằng Indra OCR...'
-                  : 'Universal AI đang tiến hành dịch thuật...')}
+                  : 'Đang tiến hành dịch thuật...')}
             </span>
+            {liveProgress.phase && (
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                {liveProgress.phase === 'loading_llm'
+                  ? 'Nạp Qwen3 GGUF'
+                  : liveProgress.phase === 'translating_local'
+                  ? 'Dịch Local LLM'
+                  : liveProgress.phase === 'translating_cloud'
+                  ? 'Dịch Gemini Cloud'
+                  : liveProgress.phase === 'reclaiming_memory'
+                  ? 'Thu hồi RAM OCR'
+                  : liveProgress.phase}
+              </span>
+            )}
+            {liveProgress.current !== undefined && liveProgress.total !== undefined && (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white text-slate-700 font-semibold border border-blue-200">
+                {liveProgress.current}/{liveProgress.total} khối
+              </span>
+            )}
             {liveProgress.stage && (
               <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white text-academic-navy font-bold border border-blue-200">
                 {liveProgress.stage}
@@ -357,7 +421,7 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="w-36 bg-blue-200/80 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-academic-navy h-2 rounded-full transition-all duration-300"
@@ -450,6 +514,14 @@ export const App: React.FC = () => {
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
+      />
+
+      {/* Engine Status & Switcher Modal */}
+      <EngineStatusModal
+        isOpen={isEngineModalOpen}
+        onClose={() => setIsEngineModalOpen(false)}
+        status={engineStatus}
+        onUpdated={(newStatus) => setEngineStatus(newStatus)}
       />
     </div>
   );

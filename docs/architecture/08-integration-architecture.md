@@ -2,8 +2,8 @@
 
 **Tầng tài liệu**: Architecture Layer (Single Source of Truth)  
 **Hệ thống**: Paper Translation (Personal & Open-Source Edition)  
-**Phiên bản**: 3.1 (Indra OCR, Single-Call Gemini & 3-Layer HTML Canvas API)  
-**Ngày cập nhật**: 2026-10-22  
+**Phiên bản**: 3.2 (Local LLM Qwen3 GGUF, Sequential Mutex & 4GB Hard RAM Ceiling)  
+**Ngày cập nhật**: 2026-10-23  
 **Trạng thái**: Approved  
 
 ---
@@ -13,14 +13,15 @@
 - **Đối tượng tiêu thụ (Consumers):** Web UI cá nhân (React/Vite SPA + 3-Layer HTML5 Canvas Engine).
 - **Giao thức:** REST API (JSON) + Server-Sent Events (SSE) cho tiến trình OCR và dịch thuật.
 - **Tiêu chí thiết kế:** Tinh giản, thống nhất khung phản hồi (`Response Envelope`), cung cấp đầy đủ thông số trang, ảnh nền Layer 0 và danh sách khối tọa độ chuẩn hóa `[0.0 .. 1.0]` để Canvas hiển thị tức thì.
+- **Chiến lược Engine:** Mặc định **Local-First** (`llama_cpp` + `Qwen3-1.7B-Q4_K_M.gguf`), cho phép chuyển đổi sang Cloud (`gemini`) qua API.
 
 ---
 
-## 2. Ma trận Điểm cuối API (Endpoints Matrix v3.1)
+## 2. Ma trận Điểm cuối API (Endpoints Matrix v3.2)
 
 | Phương thức | Đường dẫn API | Mục đích nghiệp vụ | Định dạng dữ liệu |
 |---|---|---|---|
-| `POST` | `/api/v1/ingestion/upload` | Tải lên tệp bài báo **PDF** | `multipart/form-data` |
+| `POST` | `/api/v1/ingestion/upload` | Tải lên tệp bài báo **PDF** hoặc **DOCX** | `multipart/form-data` |
 | `POST` | `/api/v1/ingestion/arxiv` | Nhập liên kết hoặc mã ID từ arXiv.org | `application/json` (`arxiv_id`) |
 | `GET` | `/api/v1/sessions` | Lấy danh sách các bài báo đã xử lý gần đây | `application/json` |
 | `GET` | `/api/v1/sessions/{session_id}` | Lấy thông tin chung và trạng thái phiên | `application/json` |
@@ -30,6 +31,8 @@
 | `GET` | `/api/v1/assets/pages/{session_id}/{filename}` | Phục vụ ảnh nền toàn trang (Layer 0) độ nét cao | `image/png` |
 | `GET` | `/api/v1/assets/figures/{session_id}/{filename}`| Phục vụ hình ảnh sơ đồ/đồ thị được crop riêng | `image/png` |
 | `GET` | `/api/v1/export/{session_id}/pdf` | Tải về tệp PDF bản dịch hoàn chỉnh từ Backend (hoặc xuất trực tiếp từ Canvas) | `application/pdf` |
+| `GET` | `/api/v1/system/engine-status` | Lấy trạng thái Engine (Local vs Cloud), context window & RAM | `application/json` |
+| `POST` | `/api/v1/system/engine-switch` | Chuyển đổi runtime giữa Local LLM và Cloud (khóa trần <= 16K ctx) | `application/json` |
 
 ---
 
@@ -104,6 +107,20 @@ data: {"session_id":"3fa85f64-5717-4562-b3fc-2c963f66afa6","step":"COMPLETED","p
       }
     ]
   }
+}
+```
+
+### 3.4. Phản hồi trạng thái Engine thời gian thực (`GET /api/v1/system/engine-status`)
+```json
+{
+  "active_provider": "llama_cpp",
+  "is_local": true,
+  "model_name": "Qwen3-1.7B-Q4_K_M.gguf",
+  "context_window": 8192,
+  "hard_ram_ceiling_gb": 4.0,
+  "estimated_ram_usage_gb": 2.8,
+  "ocr_loaded": false,
+  "llm_loaded": true
 }
 ```
 

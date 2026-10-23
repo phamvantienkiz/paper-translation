@@ -1,8 +1,29 @@
-import { Session, Segment, MathToken, CanvasData, CanvasBlock } from '../types';
+import { Session, Segment, MathToken, CanvasData, CanvasBlock, EngineStatus } from '../types';
 
 const API_BASE = '/api/v1';
 
 export const api = {
+  async getEngineStatus(): Promise<EngineStatus> {
+    const res = await fetch(`${API_BASE}/system/engine-status`);
+    if (!res.ok) throw new Error('Không thể tải trạng thái Engine');
+    return res.json();
+  },
+
+  async switchEngine(provider: string, contextWindow?: number): Promise<EngineStatus> {
+    const res = await fetch(`${API_BASE}/system/engine-switch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider,
+        context_window: contextWindow,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Không thể chuyển đổi Engine' }));
+      throw new Error(err.detail || 'Không thể chuyển đổi Engine');
+    }
+    return res.json();
+  },
   async listSessions(): Promise<Session[]> {
     const res = await fetch(`${API_BASE}/sessions`);
     if (!res.ok) throw new Error('Không thể tải danh sách phiên dịch');

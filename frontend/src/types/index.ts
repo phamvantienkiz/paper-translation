@@ -38,12 +38,29 @@ export interface Session {
 
 export interface ProgressEvent {
   status: SessionStatus;
+  step?: string;
+  phase?: string;
   progress_percent: number;
   stage?: string;
   message?: string;
   error?: string;
+  active_engine?: 'local_llm' | 'cloud_gemini' | string;
+  model_name?: string;
+  current?: number;
+  total?: number;
   total_segments?: number;
   completed_segments?: number;
+}
+
+export interface EngineStatus {
+  active_provider: string;
+  is_local: boolean;
+  model_name: string;
+  context_window: number;
+  hard_ram_ceiling_gb: number;
+  estimated_ram_usage_gb: number;
+  ocr_loaded: boolean;
+  llm_loaded: boolean;
 }
 
 // 3-Layer Canvas Architecture Types (v3.1)
