@@ -31,7 +31,7 @@ class OcrBlockRepository:
         stmt = (
             select(OcrBlockModel)
             .where(OcrBlockModel.session_id == session_id)
-            .order_by(OcrBlockModel.reading_order.asc())
+            .order_by(OcrBlockModel.page_number.asc(), OcrBlockModel.reading_order.asc())
         )
         res = await self.db.execute(stmt)
         return list(res.scalars().all())

@@ -60,13 +60,16 @@ export const App: React.FC = () => {
     try {
       const list = await api.listSessions();
       setSessions(list);
-      if (!currentSessionId && list.length > 0) {
-        setCurrentSessionId(list[0].id);
-      }
+      setCurrentSessionId((prevId) => {
+        if (!prevId && list.length > 0) {
+          return list[0].id;
+        }
+        return prevId;
+      });
     } catch (err) {
       console.error('Error fetching sessions:', err);
     }
-  }, [currentSessionId]);
+  }, []);
 
   // Tải dữ liệu toàn bộ phiên hiện tại (CanvasData, Segments, MathTokens)
   const loadSessionDetails = useCallback(async (sessionId: string) => {

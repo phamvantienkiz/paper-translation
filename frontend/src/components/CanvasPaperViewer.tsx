@@ -15,6 +15,7 @@ import {
   ZoomOut,
   Maximize2,
   Download,
+  Printer,
   Edit3,
   FileText,
   Languages,
@@ -682,6 +683,11 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
     }
   };
 
+  // Print / Save as PDF via browser print
+  const handlePrint = () => {
+    window.print();
+  };
+
   // 1-Click PDF Export
   const handleExportPdf = () => {
     setIsExportingPdf(true);
@@ -1073,6 +1079,16 @@ export const CanvasPaperViewer: React.FC<CanvasPaperViewerProps> = ({
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* In trực tiếp / Lưu PDF qua Trình duyệt */}
+          <button
+            onClick={handlePrint}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-300 shadow-2xs transition-all cursor-pointer"
+            title="In hoặc Lưu PDF trực tiếp từ trình duyệt (chuẩn KaTeX và hình ảnh xem trước)"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>In / Lưu PDF</span>
+          </button>
 
           {/* 1-Click PDF Export Button */}
           <button

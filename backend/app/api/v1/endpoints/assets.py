@@ -43,12 +43,21 @@ async def export_session_pdf(session_id: str, db: AsyncSession = Depends(get_db)
     if not session:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiên bài báo.")
 
+    from app.services.layout_mapper import LayoutMapper
+    mapper = LayoutMapper(db)
+    canvas_data = await mapper.get_canvas_data(session_id)
+
     segment_repo = SegmentRepository(db)
     segments = await segment_repo.get_by_session_id(session_id)
     math_tokens = await segment_repo.get_math_tokens(session_id)
 
     exporter = PDFExporter()
-    pdf_path = exporter.export_pdf(session, list(segments), list(math_tokens))
+    pdf_path = exporter.export_pdf(
+        session=session,
+        canvas_data=canvas_data,
+        segments=list(segments),
+        math_tokens=list(math_tokens),
+    )
 
     filename = f"{Path(session.file_name).stem}_translated.pdf"
     return FileResponse(

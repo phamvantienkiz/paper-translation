@@ -86,3 +86,41 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   outline: 2px solid #1e3a5f;
   outline-offset: 2px;
 }
+
+/* Print CSS: Xuất bản in PDF trực tiếp từ trình duyệt chuẩn A4 sắc nét */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Ẩn các thanh điều hướng, sticky header, toolbar của web */
+  header, nav, .sticky, button, [role="button"], .canvas-stage-grid {
+    background: transparent !important;
+  }
+
+  .sticky, button, .viewer-controls {
+    display: none !important;
+  }
+
+  /* Hiển thị bài viết học thuật liền mạch không đứt gãy */
+  article {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+  }
+
+  figure, table, .math-display {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

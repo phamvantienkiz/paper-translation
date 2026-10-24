@@ -242,7 +242,7 @@ class TranslationService:
                 # Đồng bộ bản dịch vào paper_segments
                 if db_segments:
                     for idx, seg in enumerate(db_segments):
-                        code = db_blocks[idx].block_code if (db_blocks and idx < len(db_blocks)) else f"BLK_{seg.order_index:04d}"
+                        code = db_blocks[idx].block_code if (db_blocks and idx < len(db_blocks)) else f"BLK_{seg.order_index + 1:04d}"
                         seg_trans = translated_map.get(code)
                         if seg_trans:
                             await segment_repo.update_translation(seg.id, seg_trans)
