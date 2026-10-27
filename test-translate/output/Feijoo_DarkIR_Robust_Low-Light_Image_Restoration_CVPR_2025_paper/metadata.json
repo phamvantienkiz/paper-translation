@@ -1,0 +1,1189 @@
+{
+  "pdf_filename": "Feijoo_DarkIR_Robust_Low-Light_Image_Restoration_CVPR_2025_paper.pdf",
+  "title": "DarkIR: Robust Low-Light Image Restoration (Phục hồi hình ảnh thiếu sáng mạnh mẽ)",
+  "total_pages": 11,
+  "total_batches": 3,
+  "figures": [
+    {
+      "num": 1,
+      "page": 1,
+      "filename": "figure_01.png",
+      "rel_path": "figures/figure_01.png",
+      "width": 1282,
+      "height": 920,
+      "caption": "Figure 1. Previous Low-light Image Enhancement (LLIE) and restoration methods are not robust to blur and illumination changes. Our\nmulti-task model is able to restore real low-light images under varying illumination, noise and blur conditions. Zoom-in to see details."
+    },
+    {
+      "num": 2,
+      "page": 3,
+      "filename": "figure_02.png",
+      "rel_path": "figures/figure_02.png",
+      "width": 1374,
+      "height": 534,
+      "caption": "Figure 2. General diagram of DarkIR. The neural network follows an encoder-decoder architecture. We use different blocks for encoding\nand decoding that follow the Metaformer structure [56]. The encoder focuses on the low-light illumination issues using Fourier information.\nThus, the encoder produces a low-resolution reconstructed image ˆx↓8 with corrected illumination. The decoder focuses on upscaling and\nreducing the blur using the prior illumination-enhanced encoded features. To achieve this, the decoder uses large receptive field spatial\nattention. This design allows our lightweight model to have less parameters and FLOPs than previous methods."
+    },
+    {
+      "num": 3,
+      "page": 5,
+      "filename": "figure_03.png",
+      "rel_path": "figures/figure_03.png",
+      "width": 1396,
+      "height": 646,
+      "caption": "Figure 3. Qualitative comparisons on the LOLBlur dataset (synthetic samples from the testset)."
+    },
+    {
+      "num": 4,
+      "page": 6,
+      "filename": "figure_04.png",
+      "rel_path": "figures/figure_04.png",
+      "width": 1386,
+      "height": 720,
+      "caption": "Figure 4. Additional visual comparisons on the LOLBlur [65] dataset with 2-step pipelines. DarkIR generates much sharper images with\nvisually pleasing results. (Zoom in for best view)."
+    },
+    {
+      "num": 5,
+      "page": 7,
+      "filename": "figure_05.png",
+      "rel_path": "figures/figure_05.png",
+      "width": 1378,
+      "height": 231,
+      "caption": "Figure 5. Qualitative results on the real-world dataset LSRW-Huawei [19]. We provide more samples in the supplementary."
+    },
+    {
+      "num": 6,
+      "page": 7,
+      "filename": "figure_06.png",
+      "rel_path": "figures/figure_06.png",
+      "width": 1193,
+      "height": 455,
+      "caption": "Figure 6. Qualitative results compared with state of the art method RetinexFormer [3] on LOLv2-Real."
+    },
+    {
+      "num": 7,
+      "page": 8,
+      "filename": "figure_07.png",
+      "rel_path": "figures/figure_07.png",
+      "width": 1396,
+      "height": 358,
+      "caption": "Figure 7. Qualitative comparison on real night scenes from the RealBlurLOL dataset. (Zoom in for best view)."
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_01.png",
+      "rel_path": "figures/image_p01_01.png",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_02.png",
+      "rel_path": "figures/image_p01_02.png",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_03.png",
+      "rel_path": "figures/image_p01_03.png",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_04.png",
+      "rel_path": "figures/image_p01_04.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_05.png",
+      "rel_path": "figures/image_p01_05.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 1,
+      "filename": "image_p01_06.png",
+      "rel_path": "figures/image_p01_06.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 3,
+      "filename": "image_p03_01.jpeg",
+      "rel_path": "figures/image_p03_01.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 3,
+      "filename": "image_p03_11.jpeg",
+      "rel_path": "figures/image_p03_11.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 3,
+      "filename": "image_p03_12.jpeg",
+      "rel_path": "figures/image_p03_12.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_02.jpeg",
+      "rel_path": "figures/image_p05_02.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_03.jpeg",
+      "rel_path": "figures/image_p05_03.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_04.jpeg",
+      "rel_path": "figures/image_p05_04.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_05.jpeg",
+      "rel_path": "figures/image_p05_05.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_06.jpeg",
+      "rel_path": "figures/image_p05_06.jpeg",
+      "width": 393,
+      "height": 169
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_07.jpeg",
+      "rel_path": "figures/image_p05_07.jpeg",
+      "width": 420,
+      "height": 189
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_11.jpeg",
+      "rel_path": "figures/image_p05_11.jpeg",
+      "width": 395,
+      "height": 170
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_12.jpeg",
+      "rel_path": "figures/image_p05_12.jpeg",
+      "width": 421,
+      "height": 190
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_14.jpeg",
+      "rel_path": "figures/image_p05_14.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_15.jpeg",
+      "rel_path": "figures/image_p05_15.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_16.jpeg",
+      "rel_path": "figures/image_p05_16.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_17.jpeg",
+      "rel_path": "figures/image_p05_17.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_18.jpeg",
+      "rel_path": "figures/image_p05_18.jpeg",
+      "width": 391,
+      "height": 166
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_19.jpeg",
+      "rel_path": "figures/image_p05_19.jpeg",
+      "width": 401,
+      "height": 172
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_23.jpeg",
+      "rel_path": "figures/image_p05_23.jpeg",
+      "width": 393,
+      "height": 169
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_24.jpeg",
+      "rel_path": "figures/image_p05_24.jpeg",
+      "width": 400,
+      "height": 173
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_25.jpeg",
+      "rel_path": "figures/image_p05_25.jpeg",
+      "width": 393,
+      "height": 168
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_26.jpeg",
+      "rel_path": "figures/image_p05_26.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_27.jpeg",
+      "rel_path": "figures/image_p05_27.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_28.jpeg",
+      "rel_path": "figures/image_p05_28.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_29.jpeg",
+      "rel_path": "figures/image_p05_29.jpeg",
+      "width": 394,
+      "height": 169
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_30.jpeg",
+      "rel_path": "figures/image_p05_30.jpeg",
+      "width": 417,
+      "height": 186
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_31.jpeg",
+      "rel_path": "figures/image_p05_31.jpeg",
+      "width": 418,
+      "height": 186
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_32.jpeg",
+      "rel_path": "figures/image_p05_32.jpeg",
+      "width": 392,
+      "height": 169
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_33.jpeg",
+      "rel_path": "figures/image_p05_33.jpeg",
+      "width": 418,
+      "height": 188
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_34.jpeg",
+      "rel_path": "figures/image_p05_34.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_35.jpeg",
+      "rel_path": "figures/image_p05_35.jpeg",
+      "width": 392,
+      "height": 167
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_36.jpeg",
+      "rel_path": "figures/image_p05_36.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_37.jpeg",
+      "rel_path": "figures/image_p05_37.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_38.jpeg",
+      "rel_path": "figures/image_p05_38.jpeg",
+      "width": 394,
+      "height": 167
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_39.jpeg",
+      "rel_path": "figures/image_p05_39.jpeg",
+      "width": 397,
+      "height": 170
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_40.jpeg",
+      "rel_path": "figures/image_p05_40.jpeg",
+      "width": 399,
+      "height": 170
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_41.jpeg",
+      "rel_path": "figures/image_p05_41.jpeg",
+      "width": 394,
+      "height": 169
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_42.jpeg",
+      "rel_path": "figures/image_p05_42.jpeg",
+      "width": 400,
+      "height": 171
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_43.jpeg",
+      "rel_path": "figures/image_p05_43.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 5,
+      "filename": "image_p05_46.jpeg",
+      "rel_path": "figures/image_p05_46.jpeg",
+      "width": 560,
+      "height": 320
+    },
+    {
+      "page": 6,
+      "filename": "image_p06_01.jpeg",
+      "rel_path": "figures/image_p06_01.jpeg",
+      "width": 1911,
+      "height": 689
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_01.jpeg",
+      "rel_path": "figures/image_p07_01.jpeg",
+      "width": 960,
+      "height": 720
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_02.png",
+      "rel_path": "figures/image_p07_02.png",
+      "width": 307,
+      "height": 231
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_03.png",
+      "rel_path": "figures/image_p07_03.png",
+      "width": 312,
+      "height": 232
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_04.png",
+      "rel_path": "figures/image_p07_04.png",
+      "width": 304,
+      "height": 235
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_05.jpeg",
+      "rel_path": "figures/image_p07_05.jpeg",
+      "width": 960,
+      "height": 720
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_06.jpeg",
+      "rel_path": "figures/image_p07_06.jpeg",
+      "width": 960,
+      "height": 720
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_07.png",
+      "rel_path": "figures/image_p07_07.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_08.png",
+      "rel_path": "figures/image_p07_08.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_09.png",
+      "rel_path": "figures/image_p07_09.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_10.png",
+      "rel_path": "figures/image_p07_10.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_11.png",
+      "rel_path": "figures/image_p07_11.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_12.png",
+      "rel_path": "figures/image_p07_12.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_13.png",
+      "rel_path": "figures/image_p07_13.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 7,
+      "filename": "image_p07_14.png",
+      "rel_path": "figures/image_p07_14.png",
+      "width": 600,
+      "height": 400
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_01.jpx",
+      "rel_path": "figures/image_p08_01.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_04.jpx",
+      "rel_path": "figures/image_p08_04.jpx",
+      "width": 469,
+      "height": 204
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_05.jpx",
+      "rel_path": "figures/image_p08_05.jpx",
+      "width": 472,
+      "height": 205
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_06.jpx",
+      "rel_path": "figures/image_p08_06.jpx",
+      "width": 398,
+      "height": 171
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_07.jpx",
+      "rel_path": "figures/image_p08_07.jpx",
+      "width": 392,
+      "height": 167
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_10.jpx",
+      "rel_path": "figures/image_p08_10.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_11.jpx",
+      "rel_path": "figures/image_p08_11.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_12.jpx",
+      "rel_path": "figures/image_p08_12.jpx",
+      "width": 467,
+      "height": 200
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_13.jpx",
+      "rel_path": "figures/image_p08_13.jpx",
+      "width": 465,
+      "height": 197
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_14.jpx",
+      "rel_path": "figures/image_p08_14.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_15.jpx",
+      "rel_path": "figures/image_p08_15.jpx",
+      "width": 391,
+      "height": 167
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_16.jpx",
+      "rel_path": "figures/image_p08_16.jpx",
+      "width": 398,
+      "height": 170
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_17.jpx",
+      "rel_path": "figures/image_p08_17.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_18.jpx",
+      "rel_path": "figures/image_p08_18.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_19.jpx",
+      "rel_path": "figures/image_p08_19.jpx",
+      "width": 468,
+      "height": 204
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_20.jpx",
+      "rel_path": "figures/image_p08_20.jpx",
+      "width": 469,
+      "height": 200
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_21.jpx",
+      "rel_path": "figures/image_p08_21.jpx",
+      "width": 392,
+      "height": 169
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_22.jpx",
+      "rel_path": "figures/image_p08_22.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_23.jpx",
+      "rel_path": "figures/image_p08_23.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_24.jpx",
+      "rel_path": "figures/image_p08_24.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_25.jpx",
+      "rel_path": "figures/image_p08_25.jpx",
+      "width": 469,
+      "height": 206
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_26.jpx",
+      "rel_path": "figures/image_p08_26.jpx",
+      "width": 472,
+      "height": 206
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_27.jpx",
+      "rel_path": "figures/image_p08_27.jpx",
+      "width": 398,
+      "height": 171
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_28.jpx",
+      "rel_path": "figures/image_p08_28.jpx",
+      "width": 393,
+      "height": 167
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_29.jpx",
+      "rel_path": "figures/image_p08_29.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_30.jpx",
+      "rel_path": "figures/image_p08_30.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_31.jpx",
+      "rel_path": "figures/image_p08_31.jpx",
+      "width": 470,
+      "height": 203
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_32.jpx",
+      "rel_path": "figures/image_p08_32.jpx",
+      "width": 469,
+      "height": 203
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_33.jpx",
+      "rel_path": "figures/image_p08_33.jpx",
+      "width": 391,
+      "height": 173
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_34.jpx",
+      "rel_path": "figures/image_p08_34.jpx",
+      "width": 399,
+      "height": 173
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_35.jpx",
+      "rel_path": "figures/image_p08_35.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_36.jpx",
+      "rel_path": "figures/image_p08_36.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_37.jpx",
+      "rel_path": "figures/image_p08_37.jpx",
+      "width": 468,
+      "height": 204
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_38.jpx",
+      "rel_path": "figures/image_p08_38.jpx",
+      "width": 1120,
+      "height": 640
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_39.jpx",
+      "rel_path": "figures/image_p08_39.jpx",
+      "width": 468,
+      "height": 201
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_40.jpx",
+      "rel_path": "figures/image_p08_40.jpx",
+      "width": 399,
+      "height": 172
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_41.jpx",
+      "rel_path": "figures/image_p08_41.jpx",
+      "width": 392,
+      "height": 170
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_42.jpx",
+      "rel_path": "figures/image_p08_42.jpx",
+      "width": 400,
+      "height": 174
+    }
+  ],
+  "batches": [
+    {
+      "index": 1,
+      "filename": "batch_01.txt",
+      "words": 2031,
+      "tokens_count": 12
+    },
+    {
+      "index": 2,
+      "filename": "batch_02.txt",
+      "words": 1684,
+      "tokens_count": 55
+    },
+    {
+      "index": 3,
+      "filename": "batch_03.txt",
+      "words": 1267,
+      "tokens_count": 15
+    }
+  ],
+  "math_tokens": [
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0001>>>",
+      "raw_latex": "$^2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0002>>>",
+      "raw_latex": "$$\\mathbf{y} = \\gamma(\\mathbf{x} \\otimes \\mathbf{k}) + \\mathbf{n}, \\qquad (1)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0003>>>",
+      "raw_latex": "$\\gamma$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0004>>>",
+      "raw_latex": "$\\otimes$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0005>>>",
+      "raw_latex": "$[4C, H/2, W/2] \\to [C, H, W]$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0006>>>",
+      "raw_latex": "$$z_1 = \\text{Attention}(\\text{LayerNorm}(z)) + z \\qquad (2)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0007>>>",
+      "raw_latex": "$$z_2 = \\text{FFN}(\\text{LayerNorm}(z_1)) + z_1 \\qquad (3)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0008>>>",
+      "raw_latex": "",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0009>>>",
+      "raw_latex": "$z$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0010>>>",
+      "raw_latex": "$z_2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0011>>>",
+      "raw_latex": "$\\hat{x}_{\\downarrow 8}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0012>>>",
+      "raw_latex": "$\\hat{x}_{\\downarrow 8}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0013>>>",
+      "raw_latex": "$\\hat{x}_{\\downarrow 8}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0014>>>",
+      "raw_latex": "$$z_1 = \\text{Di-SpAM}(\\text{LayerNorm}(z)) + z \\qquad (4)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0015>>>",
+      "raw_latex": "$$z_2 = \\text{GatedFFN}(\\text{LayerNorm}(z_1)) + z_1 \\qquad (5)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0016>>>",
+      "raw_latex": "$f$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0017>>>",
+      "raw_latex": "$L_{pixel}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0018>>>",
+      "raw_latex": "$L_{pixel} = \\|x - \\hat{x}\\|_1$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0019>>>",
+      "raw_latex": "$f(y) = \\hat{x}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0020>>>",
+      "raw_latex": "$x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0021>>>",
+      "raw_latex": "$L_{pixel}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0022>>>",
+      "raw_latex": "$L_1$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0023>>>",
+      "raw_latex": "$L_{percep}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0024>>>",
+      "raw_latex": "$$L_{percep} = \\text{LPIPS}(x, \\hat{x}) \\qquad (6)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0025>>>",
+      "raw_latex": "$$L_{edge} = \\|\\nabla x - \\nabla \\hat{x}\\|_2^2 \\qquad (7)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0026>>>",
+      "raw_latex": "[65]",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0027>>>",
+      "raw_latex": "$L_{lol}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0028>>>",
+      "raw_latex": "$\\hat{x}_{\\uparrow 8}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0029>>>",
+      "raw_latex": "$$L_{lol} = \\|x - \\hat{x}_{\\uparrow 8}\\|_1 + \\text{LPIPS}(x, \\hat{x}_{\\uparrow 8}) \\qquad (8)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0030>>>",
+      "raw_latex": "$x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0031>>>",
+      "raw_latex": "$\\uparrow 8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0032>>>",
+      "raw_latex": "$$\\mathcal{L} = \\lambda_p \\cdot L_{l1} + \\lambda_{pe} \\cdot L_{percep} + \\lambda_{ed} \\cdot L_{edge} + L_{lol} \\qquad (9)$$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0033>>>",
+      "raw_latex": "$\\lambda_p$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0034>>>",
+      "raw_latex": "$\\lambda_{pe}, \\text{ và } \\lambda_{ed}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0035>>>",
+      "raw_latex": "$1e^{-2}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0036>>>",
+      "raw_latex": "26.02",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0037>>>",
+      "raw_latex": "0.753",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0038>>>",
+      "raw_latex": "0.768",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0039>>>",
+      "raw_latex": "0.745",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0040>>>",
+      "raw_latex": "0.882",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0041>>>",
+      "raw_latex": "0.850",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0042>>>",
+      "raw_latex": "0.356",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0043>>>",
+      "raw_latex": "0.158",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0044>>>",
+      "raw_latex": "0.224",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0045>>>",
+      "raw_latex": "1.61",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0046>>>",
+      "raw_latex": "1.",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0047>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0048>>>",
+      "raw_latex": "Chúng tôi",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0049>>>",
+      "raw_latex": "[16],",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0050>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0051>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0052>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0053>>>",
+      "raw_latex": "[7]",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0054>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0055>>>",
+      "raw_latex": "[3]",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0056>>>",
+      "raw_latex": "0.673",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0057>>>",
+      "raw_latex": "0.502",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0058>>>",
+      "raw_latex": "0.589",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0059>>>",
+      "raw_latex": "0.570",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0060>>>",
+      "raw_latex": "0.500",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0061>>>",
+      "raw_latex": "0.516",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0062>>>",
+      "raw_latex": "$\\to$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0063>>>",
+      "raw_latex": "DeblurGAN-v2 $\\to$ Zero-DCE",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0064>>>",
+      "raw_latex": "3",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0065>>>",
+      "raw_latex": "2",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0066>>>",
+      "raw_latex": "5",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0067>>>",
+      "raw_latex": "6",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0068>>>",
+      "raw_latex": "–",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0069>>>",
+      "raw_latex": "$256 \\times 256 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0070>>>",
+      "raw_latex": "0.771",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0071>>>",
+      "raw_latex": "0.567",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0072>>>",
+      "raw_latex": "8.62",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0073>>>",
+      "raw_latex": "0.578",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0074>>>",
+      "raw_latex": "20.02",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0075>>>",
+      "raw_latex": "0.820",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0076>>>",
+      "raw_latex": "0.876",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0077>>>",
+      "raw_latex": "1.61",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0078>>>",
+      "raw_latex": "3.31",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0079>>>",
+      "raw_latex": "4.08",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0080>>>",
+      "raw_latex": "0.170",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0081>>>",
+      "raw_latex": "88%",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0082>>>",
+      "raw_latex": "[57]",
+      "is_display_math": false
+    }
+  ]
+}

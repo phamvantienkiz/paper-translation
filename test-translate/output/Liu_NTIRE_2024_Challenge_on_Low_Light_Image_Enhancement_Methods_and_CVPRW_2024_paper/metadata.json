@@ -1,0 +1,2200 @@
+{
+  "pdf_filename": "Liu_NTIRE_2024_Challenge_on_Low_Light_Image_Enhancement_Methods_and_CVPRW_2024_paper.pdf",
+  "title": "NTIRE 2024 Challenge on Low Light Image Enhancement: Methods and Results",
+  "total_pages": 24,
+  "total_batches": 8,
+  "figures": [
+    {
+      "num": 1,
+      "page": 3,
+      "filename": "figure_01.png",
+      "rel_path": "figures/figure_01.png",
+      "width": 621,
+      "height": 195,
+      "caption": "Figure 1. The backbone network employed in our method. (Re-\nproduced from ESDNet [75])"
+    },
+    {
+      "num": 2,
+      "page": 5,
+      "filename": "figure_02.png",
+      "rel_path": "figures/figure_02.png",
+      "width": 1287,
+      "height": 684,
+      "caption": "Figure 2. The overview of Retinexformer [8]. (a) Retinexformer adopts the proposed ORF that consists of an illumination estimator (i) and\na corruption restorer (ii) IGT. (b) The basic unit of IGT is IGAB, which is composed of two layer normalization (LN), an IG-MSA and a\nfeed-forward network (FFN). (c) IG-MSA uses the illumination representations captured by ORF to direct the computation of self-attention."
+    },
+    {
+      "num": 3,
+      "page": 7,
+      "filename": "figure_03.png",
+      "rel_path": "figures/figure_03.png",
+      "width": 1354,
+      "height": 388,
+      "caption": "Figure 3. DiffLight pipeline. DiffLight is composed of two branches: (a) Denoising Enhancement (DE) branch and (b) Detail Preservation\n(DP) branch."
+    },
+    {
+      "num": 4,
+      "page": 8,
+      "filename": "figure_04.png",
+      "rel_path": "figures/figure_04.png",
+      "width": 1288,
+      "height": 537,
+      "caption": "Figure 4. An overview of our UHDMamba for UHD Low Light Enhancement."
+    },
+    {
+      "num": 5,
+      "page": 8,
+      "filename": "figure_05.png",
+      "rel_path": "figures/figure_05.png",
+      "width": 656,
+      "height": 646,
+      "caption": "Figure 5. The network architecture of team LVGroup HFUT."
+    },
+    {
+      "num": 7,
+      "page": 9,
+      "filename": "figure_07.png",
+      "rel_path": "figures/figure_07.png",
+      "width": 653,
+      "height": 134,
+      "caption": "Figure 7. The network architecture of team Pixel warrior."
+    },
+    {
+      "num": 6,
+      "page": 9,
+      "filename": "figure_06.png",
+      "rel_path": "figures/figure_06.png",
+      "width": 657,
+      "height": 381,
+      "caption": "Figure 6. The network architecture of team Try1try8."
+    },
+    {
+      "num": 8,
+      "page": 10,
+      "filename": "figure_08.png",
+      "rel_path": "figures/figure_08.png",
+      "width": 648,
+      "height": 160,
+      "caption": "Figure 8. The network architecture of the MLP block."
+    },
+    {
+      "num": 9,
+      "page": 10,
+      "filename": "figure_09.png",
+      "rel_path": "figures/figure_09.png",
+      "width": 657,
+      "height": 140,
+      "caption": "Figure 9. Illustration of the propsed LLformer.(Re-produced from\nLLformer [69])"
+    },
+    {
+      "num": 10,
+      "page": 10,
+      "filename": "figure_10.png",
+      "rel_path": "figures/figure_10.png",
+      "width": 658,
+      "height": 577,
+      "caption": "Figure 10. Illustration of the proposed Axis-Transformer Block."
+    },
+    {
+      "num": 11,
+      "page": 10,
+      "filename": "figure_11.png",
+      "rel_path": "figures/figure_11.png",
+      "width": 657,
+      "height": 265,
+      "caption": "Figure 11. Illustration of the proposed Cross-Attention Fusion\nBlock."
+    },
+    {
+      "num": 12,
+      "page": 11,
+      "filename": "figure_12.png",
+      "rel_path": "figures/figure_12.png",
+      "width": 657,
+      "height": 529,
+      "caption": "Figure 12. Architecture Diagram of ImageLab Team’s Demosaic-\ning Model"
+    },
+    {
+      "num": 13,
+      "page": 12,
+      "filename": "figure_13.png",
+      "rel_path": "figures/figure_13.png",
+      "width": 1306,
+      "height": 225,
+      "caption": "Figure 13. InstructIR [23] takes as input an image and a human-written instruction for how to improve that image. The multi-task model\nperforms text-guided low-light image enhancement."
+    },
+    {
+      "num": 14,
+      "page": 12,
+      "filename": "figure_14.png",
+      "rel_path": "figures/figure_14.png",
+      "width": 626,
+      "height": 250,
+      "caption": "Figure 14. Overall framework the Team OptDev’s DFormer"
+    },
+    {
+      "num": 15,
+      "page": 14,
+      "filename": "figure_15.png",
+      "rel_path": "figures/figure_15.png",
+      "width": 1356,
+      "height": 274,
+      "caption": "Figure 15. Overall framework our Team ataza’s Frequency Guided Network"
+    },
+    {
+      "num": 16,
+      "page": 14,
+      "filename": "figure_16.png",
+      "rel_path": "figures/figure_16.png",
+      "width": 657,
+      "height": 260,
+      "caption": "Figure 16.\nOverview of the proposed Multi-scale Feature Fu-\nsionNet (MFNN). The encoder extracts features in three distinct\nscales, with information passed across hierarchies (green dashed\nbox). Fine-grained global-local spatial and contextual informa-\ntion is learnt through the GLSC Block (orange dashed box). At\ndecoder, information exchange occurs in reverse hierarchies (blue\ndashed box)."
+    },
+    {
+      "num": 17,
+      "page": 14,
+      "filename": "figure_17.png",
+      "rel_path": "figures/figure_17.png",
+      "width": 592,
+      "height": 173,
+      "caption": "Figure 17. Overview of diffusion model training process with the\ndifferentiable spatial entropy loss proposed by the team 221B."
+    },
+    {
+      "num": 18,
+      "page": 15,
+      "filename": "figure_18.png",
+      "rel_path": "figures/figure_18.png",
+      "width": 657,
+      "height": 233,
+      "caption": "Figure 18.\nFramework of Self-Calibrated Illumination Module\n(Reproduced from [55]). We employ variant of this method for\nenhancement of low-light images with custom loss function."
+    },
+    {
+      "num": 19,
+      "page": 16,
+      "filename": "figure_19.png",
+      "rel_path": "figures/figure_19.png",
+      "width": 656,
+      "height": 377,
+      "caption": "Figure 19. The network architecture of team BFU-LL."
+    },
+    {
+      "num": 21,
+      "page": 17,
+      "filename": "figure_21.png",
+      "rel_path": "figures/figure_21.png",
+      "width": 657,
+      "height": 362,
+      "caption": "Figure 21. General method ﬂow chart."
+    },
+    {
+      "num": 20,
+      "page": 17,
+      "filename": "figure_20.png",
+      "rel_path": "figures/figure_20.png",
+      "width": 657,
+      "height": 300,
+      "caption": "Figure 20. The architecture of the proposed model for Low Light\nEnhancement."
+    },
+    {
+      "num": 22,
+      "page": 18,
+      "filename": "figure_22.png",
+      "rel_path": "figures/figure_22.png",
+      "width": 657,
+      "height": 348,
+      "caption": "Figure 22. Illustrative diagram showing the application of Retinex-\nformer for low-light enhancement."
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_01.jpeg",
+      "rel_path": "figures/image_p08_01.jpeg",
+      "width": 242,
+      "height": 181
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_02.jpeg",
+      "rel_path": "figures/image_p08_02.jpeg",
+      "width": 243,
+      "height": 181
+    },
+    {
+      "page": 8,
+      "filename": "image_p08_03.png",
+      "rel_path": "figures/image_p08_03.png",
+      "width": 750,
+      "height": 738
+    },
+    {
+      "page": 9,
+      "filename": "image_p09_01.png",
+      "rel_path": "figures/image_p09_01.png",
+      "width": 822,
+      "height": 466
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_01.jpeg",
+      "rel_path": "figures/image_p10_01.jpeg",
+      "width": 412,
+      "height": 183
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_02.jpeg",
+      "rel_path": "figures/image_p10_02.jpeg",
+      "width": 412,
+      "height": 183
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_04.jpeg",
+      "rel_path": "figures/image_p10_04.jpeg",
+      "width": 1036,
+      "height": 880
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_05.png",
+      "rel_path": "figures/image_p10_05.png",
+      "width": 174,
+      "height": 1055
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_06.png",
+      "rel_path": "figures/image_p10_06.png",
+      "width": 1036,
+      "height": 177
+    },
+    {
+      "page": 10,
+      "filename": "image_p10_07.jpeg",
+      "rel_path": "figures/image_p10_07.jpeg",
+      "width": 959,
+      "height": 372
+    },
+    {
+      "page": 11,
+      "filename": "image_p11_01.jpeg",
+      "rel_path": "figures/image_p11_01.jpeg",
+      "width": 958,
+      "height": 768
+    },
+    {
+      "page": 12,
+      "filename": "image_p12_04.jpeg",
+      "rel_path": "figures/image_p12_04.jpeg",
+      "width": 383,
+      "height": 256
+    },
+    {
+      "page": 12,
+      "filename": "image_p12_05.jpeg",
+      "rel_path": "figures/image_p12_05.jpeg",
+      "width": 381,
+      "height": 255
+    },
+    {
+      "page": 12,
+      "filename": "image_p12_06.jpeg",
+      "rel_path": "figures/image_p12_06.jpeg",
+      "width": 254,
+      "height": 170
+    },
+    {
+      "page": 12,
+      "filename": "image_p12_07.jpeg",
+      "rel_path": "figures/image_p12_07.jpeg",
+      "width": 259,
+      "height": 174
+    },
+    {
+      "page": 12,
+      "filename": "image_p12_08.png",
+      "rel_path": "figures/image_p12_08.png",
+      "width": 599,
+      "height": 229
+    },
+    {
+      "page": 14,
+      "filename": "image_p14_41.jpeg",
+      "rel_path": "figures/image_p14_41.jpeg",
+      "width": 412,
+      "height": 243
+    },
+    {
+      "page": 14,
+      "filename": "image_p14_42.jpeg",
+      "rel_path": "figures/image_p14_42.jpeg",
+      "width": 412,
+      "height": 243
+    },
+    {
+      "page": 14,
+      "filename": "image_p14_47.jpeg",
+      "rel_path": "figures/image_p14_47.jpeg",
+      "width": 160,
+      "height": 190
+    },
+    {
+      "page": 15,
+      "filename": "image_p15_01.jpeg",
+      "rel_path": "figures/image_p15_01.jpeg",
+      "width": 1126,
+      "height": 380
+    },
+    {
+      "page": 16,
+      "filename": "image_p16_01.jpeg",
+      "rel_path": "figures/image_p16_01.jpeg",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "page": 17,
+      "filename": "image_p17_01.jpeg",
+      "rel_path": "figures/image_p17_01.jpeg",
+      "width": 1249,
+      "height": 274
+    },
+    {
+      "page": 17,
+      "filename": "image_p17_02.jpeg",
+      "rel_path": "figures/image_p17_02.jpeg",
+      "width": 958,
+      "height": 429
+    },
+    {
+      "page": 17,
+      "filename": "image_p17_03.jpeg",
+      "rel_path": "figures/image_p17_03.jpeg",
+      "width": 549,
+      "height": 389
+    },
+    {
+      "page": 17,
+      "filename": "image_p17_04.jpeg",
+      "rel_path": "figures/image_p17_04.jpeg",
+      "width": 412,
+      "height": 518
+    },
+    {
+      "page": 18,
+      "filename": "image_p18_01.jpeg",
+      "rel_path": "figures/image_p18_01.jpeg",
+      "width": 1034,
+      "height": 534
+    }
+  ],
+  "batches": [
+    {
+      "index": 1,
+      "filename": "batch_01.txt",
+      "words": 1831,
+      "tokens_count": 12
+    },
+    {
+      "index": 2,
+      "filename": "batch_02.txt",
+      "words": 1056,
+      "tokens_count": 76
+    },
+    {
+      "index": 3,
+      "filename": "batch_03.txt",
+      "words": 1540,
+      "tokens_count": 47
+    },
+    {
+      "index": 4,
+      "filename": "batch_04.txt",
+      "words": 1697,
+      "tokens_count": 37
+    },
+    {
+      "index": 5,
+      "filename": "batch_05.txt",
+      "words": 1844,
+      "tokens_count": 29
+    },
+    {
+      "index": 6,
+      "filename": "batch_06.txt",
+      "words": 1447,
+      "tokens_count": 59
+    },
+    {
+      "index": 7,
+      "filename": "batch_07.txt",
+      "words": 1719,
+      "tokens_count": 49
+    },
+    {
+      "index": 8,
+      "filename": "batch_08.txt",
+      "words": 1733,
+      "tokens_count": 43
+    }
+  ],
+  "math_tokens": [
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0001>>>",
+      "raw_latex": "$\\qquad$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0002>>>",
+      "raw_latex": "$\\mathrm { ~ ~ ~ ~ ~ ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0003>>>",
+      "raw_latex": "$~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0004>>>",
+      "raw_latex": "$\\qquad$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0005>>>",
+      "raw_latex": "$\\qquad$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0006>>>",
+      "raw_latex": "$~ ~ ~ ~ ~ ~ ~ ~ \\mathrm { Y u n k a i ~ Z h a n g ~ ~ ~ ~ ~ ~ ~ B a i a n g ~ L i ~ ~ ~ ~ ~ ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0007>>>",
+      "raw_latex": "$a n d ~ c r e a t i v i t y ~ i n ~ t h i s f e l d .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0008>>>",
+      "raw_latex": "$8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0009>>>",
+      "raw_latex": "$8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0010>>>",
+      "raw_latex": "$\\mathrm { O p t D e v }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0011>>>",
+      "raw_latex": "$2 0 . 3 2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0012>>>",
+      "raw_latex": "$2 0 . 0 7$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0013>>>",
+      "raw_latex": "$L _ { t o t a l }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0014>>>",
+      "raw_latex": "$\\tilde { I _ { 1 } } , \\tilde { I _ { 2 } } , \\tilde { I _ { 3 } } :$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0015>>>",
+      "raw_latex": "$\\lambda$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0016>>>",
+      "raw_latex": "$0 . 0 4 , \\ I _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0017>>>",
+      "raw_latex": "$I _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0018>>>",
+      "raw_latex": "$L _ { C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0019>>>",
+      "raw_latex": "$\\{ 4 2 \\mathrm { l } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0020>>>",
+      "raw_latex": "$L _ { P }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0021>>>",
+      "raw_latex": "$2 \\times 1 0 ^ { - 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0022>>>",
+      "raw_latex": "$\\mathbf { I } = ( \\mathbf { R } + \\hat { \\mathbf { R } } ) \\subset ( \\mathbf { L } + \\hat { \\mathbf { L } } )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0023>>>",
+      "raw_latex": "$\\hat { \\textbf { R } } \\in \\mathbb { R } ^ { H \\times W \\times 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0024>>>",
+      "raw_latex": "$\\hat { \\bf L } \\in \\mathbb { R } ^ { H \\times W }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0025>>>",
+      "raw_latex": "$\\underline { { \\mathbf { I } } } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0026>>>",
+      "raw_latex": "$\\bar { \\bf L }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0027>>>",
+      "raw_latex": "$\\bar { \\bf L } \\odot { \\bf L } = { \\bf 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0028>>>",
+      "raw_latex": "$\\mathbf { I } \\odot \\bar { \\mathbf { L } } = \\mathbf { R } + \\mathbf { R } \\odot ( \\hat { \\mathbf { L } } \\odot \\bar { \\mathbf { L } } ) + ( \\hat { \\mathbf { R } } \\odot ( \\mathbf { L } + \\hat { \\mathbf { L } } ) ) \\odot \\bar { \\mathbf { L } } , \\ \\ ( 4 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0029>>>",
+      "raw_latex": "$\\mathbf { I } _ { l u } \\in \\mathbb { R } ^ { H \\times W \\times 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0030>>>",
+      "raw_latex": "$\\mathbf { C } \\in$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0031>>>",
+      "raw_latex": "$\\mathbb { R } ^ { H \\times W \\times 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0032>>>",
+      "raw_latex": "$\\mathrm { \\ t h e \\ o v e r a l l \\ c o r r u p t i o n \\ \\ t e r m . \\ \\ S u b s e - }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0033>>>",
+      "raw_latex": "$( \\mathbf { I } _ { l u } , \\mathbf { F } _ { l u } ) = \\mathcal { E } ( \\mathbf { I } , \\mathbf { L } _ { p } ) , \\quad \\mathbf { I } _ { e n } = \\mathcal { R } ( \\mathbf { I } _ { l u } , \\mathbf { F } _ { l u } ) , \\qquad ( 6 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0034>>>",
+      "raw_latex": "$\\mathcal { E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0035>>>",
+      "raw_latex": "$\\mathcal { R }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0036>>>",
+      "raw_latex": "$\\textit { \\cal E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0037>>>",
+      "raw_latex": "$\\mathbf { I }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0038>>>",
+      "raw_latex": "$\\mathbf { L } _ { p } ~ \\in ~ \\mathbb { R } ^ { H \\times W }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0039>>>",
+      "raw_latex": "$\\textbf { L } _ { p } ~ = ~ \\mathrm { m e a n } _ { c } ( \\mathbf { I } )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0040>>>",
+      "raw_latex": "$\\mathcal { E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0041>>>",
+      "raw_latex": "$\\mathbf { I } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0042>>>",
+      "raw_latex": "$\\mathbf { I } _ { e n } \\in \\mathbb { R } ^ { H \\times W \\times 3 } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0043>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0044>>>",
+      "raw_latex": "$\\mathcal { E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0045>>>",
+      "raw_latex": "$=$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0046>>>",
+      "raw_latex": "$\\mathbf { I }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0047>>>",
+      "raw_latex": "$\\mathbf { L } _ { p } . \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0048>>>",
+      "raw_latex": "$\\mathbf { F } _ { l u } . \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0049>>>",
+      "raw_latex": "$\\mathcal { E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0050>>>",
+      "raw_latex": "$c o n v 1 \\! \\times \\! 1$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0051>>>",
+      "raw_latex": "$\\mathbf { F } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0052>>>",
+      "raw_latex": "$\\bar { \\mathbf { L } } \\in \\mathbb { R } ^ { H \\times W \\times 3 } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0053>>>",
+      "raw_latex": "$\\mathbf { I } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0054>>>",
+      "raw_latex": "$c o n v 3 \\! \\times \\! 3 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0055>>>",
+      "raw_latex": "$\\mathbf { F } _ { i } \\in \\mathbb { R } ^ { \\frac { 1 } { 2 i } \\times 2 ^ { i } C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0056>>>",
+      "raw_latex": "$i$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0057>>>",
+      "raw_latex": "$\\mathbb { R } ^ { H \\times W \\times 3 } . \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0058>>>",
+      "raw_latex": "$\\mathbf { I } _ { e n }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0059>>>",
+      "raw_latex": "$\\mathbf { I } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0060>>>",
+      "raw_latex": "$\\mathbf { I } _ { r e } , \\, i . e . , \\, \\mathbf { I } _ { e n } = \\mathbf { I } _ { l u } + \\bar { \\mathbf { I } } _ { r e } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0061>>>",
+      "raw_latex": "$\\mathbf { F } _ { l u } \\in \\mathbb { R } ^ { H \\times W \\times C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0062>>>",
+      "raw_latex": "$\\mathcal { E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0063>>>",
+      "raw_latex": "$\\mathbf { X } \\in$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0064>>>",
+      "raw_latex": "$\\mathbb { R } ^ { H W \\times C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0065>>>",
+      "raw_latex": "$k$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0066>>>",
+      "raw_latex": "$\\mathbf { X } = [ \\mathbf { X } _ { 1 } , \\, \\mathbf { X } _ { 2 } , \\, \\cdots , \\, \\mathbf { X } _ { k } ] ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0067>>>",
+      "raw_latex": "$\\mathbf { X } _ { i } \\in \\mathbb { R } ^ { H W \\times d _ { k } } , d _ { k } = \\frac { C } { k } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0068>>>",
+      "raw_latex": "$i = 1 , 2 , \\cdots , k .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0069>>>",
+      "raw_latex": "$\\mathbf { X } _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0070>>>",
+      "raw_latex": "$q u e r y ~ \\mathbf { Q } _ { i } , \\, k e y ~ \\mathbf { K } _ { i } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0071>>>",
+      "raw_latex": "$v a l u e$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0072>>>",
+      "raw_latex": "$\\mathbf { V } _ { i } \\in \\mathbb { R } ^ { H W \\times d _ { k } } \\ \\mathrm { a s : }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0073>>>",
+      "raw_latex": "$\\mathbf { W } _ { \\mathbf { Q } _ { i } } , \\mathbf { W } _ { \\mathbf { K } _ { i } } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0074>>>",
+      "raw_latex": "$\\mathbf { W } _ { \\mathbf { V } _ { i } } \\in \\mathbb { R } ^ { d _ { k } \\times d _ { k } }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0075>>>",
+      "raw_latex": "$\\mathbf { F } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0076>>>",
+      "raw_latex": "$\\mathbf { F } _ { l u }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0077>>>",
+      "raw_latex": "$\\mathbf { Y } \\in \\mathbb { R } ^ { H W \\times C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0078>>>",
+      "raw_latex": "$k$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0079>>>",
+      "raw_latex": "$\\mathbf { Y } = [ \\mathbf { Y } _ { 1 } , \\, \\mathbf { Y } _ { 2 } , \\, \\, \\cdots , \\, \\mathbf { Y } _ { k } ] ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0080>>>",
+      "raw_latex": "$\\mathbf { Y } _ { i } \\in \\mathbb { R } ^ { H W \\times d _ { k } } , i = 1 , 2 , \\cdots , k .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0081>>>",
+      "raw_latex": "$\\mathbf { P } \\in \\mathbb { R } ^ { H W \\times C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0082>>>",
+      "raw_latex": "$\\mathbf { X } _ { o u t } \\in \\mathbb { R } ^ { H W \\times C } . \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0083>>>",
+      "raw_latex": "$\\mathbf { X } _ { o u t }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0084>>>",
+      "raw_latex": "$\\mathbf { F } _ { o u t } \\in \\mathbb { R } ^ { H \\times \\bar { W } \\times C } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0085>>>",
+      "raw_latex": "$\\alpha _ { i } ~ \\in ~ \\mathbb { R } ^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0086>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0087>>>",
+      "raw_latex": "$k$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0088>>>",
+      "raw_latex": "$f c$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0089>>>",
+      "raw_latex": "$[ 2 ]$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0090>>>",
+      "raw_latex": "$( \\beta _ { 1 } ~ = ~ 0 . 9 ~ \\mathrm { ~ a n d ~ } ~ \\beta _ { 2 } ~ = ~ 0 . 9 9 9 ) ~ \\mathrm { f o r ~ } ~ 2 . 5 ~ \\times ~ 1 0 ^ { 5 } ~ \\mathrm { i t e r a - }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0091>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0092>>>",
+      "raw_latex": "$\\, 2 { \\times } 1 0 ^ { - 4 } \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0093>>>",
+      "raw_latex": "$\\, 1 \\! \\times \\! 1 0 ^ { - 6 } \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0094>>>",
+      "raw_latex": "$\\mathbf { O u t p u t } _ { D E } = \\mathrm { L E D N e t } ( D I f f B a c k w a r d ( I n p u t ) ) , \\ \\ ( 1 1 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0095>>>",
+      "raw_latex": "$n \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0096>>>",
+      "raw_latex": "$n$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0097>>>",
+      "raw_latex": "$\\mathbf { O u t p u t } _ { D P } = \\mathrm { P P F ( R e s t o r m e r ( S e g m e n t a t i o n ( I n p u t ) ) } ) .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0098>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0099>>>",
+      "raw_latex": "$O u t p u t _ { D E }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0100>>>",
+      "raw_latex": "$O u t p u t _ { D P }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0101>>>",
+      "raw_latex": "$w _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0102>>>",
+      "raw_latex": "$w _ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0103>>>",
+      "raw_latex": "$\\mathbf { O u t p u t } = w _ { 1 } \\mathbf { O u t p u t } _ { D E } + w _ { 2 } \\mathbf { O u t p u t } _ { D P } . \\quad ( 1 3 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0104>>>",
+      "raw_latex": "$p .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0105>>>",
+      "raw_latex": "$w e i g h t _ { 1 , 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0106>>>",
+      "raw_latex": "$p a t c h _ { r o w }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0107>>>",
+      "raw_latex": "$\\textbf { * }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0108>>>",
+      "raw_latex": "$h _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0109>>>",
+      "raw_latex": "$w _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0110>>>",
+      "raw_latex": "$( w _ { i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0111>>>",
+      "raw_latex": "$\\mathrm { ~ t o ~ t h e ~ } p a t c h _ { r o w } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0112>>>",
+      "raw_latex": "$\\bullet$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0113>>>",
+      "raw_latex": "$\\, w e i g h t _ { 1 , 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0114>>>",
+      "raw_latex": "$\\bullet$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0115>>>",
+      "raw_latex": "$( h _ { i } ~ \\neq ~ 0 ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0116>>>",
+      "raw_latex": "$w e i g h t _ { 3 , 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0117>>>",
+      "raw_latex": "$T$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0118>>>",
+      "raw_latex": "$\\beta _ { t }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0119>>>",
+      "raw_latex": "$\\beta _ { 1 } = 0 . 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0120>>>",
+      "raw_latex": "$\\beta _ { T } = 0 . 9 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0121>>>",
+      "raw_latex": "$[ 5 ]$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0122>>>",
+      "raw_latex": "$\\mathcal { L } _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0123>>>",
+      "raw_latex": "$\\mathrm { D i f f I R } _ { S 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0124>>>",
+      "raw_latex": "$3 0 0 \\mathrm { K }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0125>>>",
+      "raw_latex": "$2 \\, \\times \\, 1 0 ^ { - 4 } \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0126>>>",
+      "raw_latex": "$2 \\! \\times \\! 1 0 ^ { - 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0127>>>",
+      "raw_latex": "$0 . 5$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0128>>>",
+      "raw_latex": "$\\beta _ { 1 } ~ = ~ 0 . 9 , ~ \\beta _ { 2 } ~ = ~ 0 . 9 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0129>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { - 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0130>>>",
+      "raw_latex": "$( \\beta _ { 1 } = 0 . 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0131>>>",
+      "raw_latex": "$\\beta _ { 2 } = 0 . 9 9 9 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0132>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { - 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0133>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { - 7 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0134>>>",
+      "raw_latex": "$\\{ 5 2 \\}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0135>>>",
+      "raw_latex": "$2 5 6 \\times 2 5 6$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0136>>>",
+      "raw_latex": "$I _ { L Q } ~ \\in ~ \\mathcal { R } ^ { H \\times W \\times 3 } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0137>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0138>>>",
+      "raw_latex": "$F _ { s } \\in \\mathcal { R } ^ { H \\times W \\times \\overline { { s } } } \\, ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0139>>>",
+      "raw_latex": "$F _ { s }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0140>>>",
+      "raw_latex": "$F _ { d } ^ { l } \\in \\mathcal { R } ^ { \\frac { H } { S } \\times S C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0141>>>",
+      "raw_latex": "$l { - \\mathrm { t h } }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0142>>>",
+      "raw_latex": "$F _ { R } = F _ { L } + F _ { s } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0143>>>",
+      "raw_latex": "$I _ { H Q } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0144>>>",
+      "raw_latex": "$h _ { t } = \\bar { A } h _ { t - }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0145>>>",
+      "raw_latex": "$y _ { t } = c h _ { t }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0146>>>",
+      "raw_latex": "$D \\, x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0147>>>",
+      "raw_latex": "$[ 4 1 ]$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0148>>>",
+      "raw_latex": "$2 \\times 1 0 ^ { - 4 } . ~ \\mathrm { ~ W e }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0149>>>",
+      "raw_latex": "$5 1 2 \\times 5 1 2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0150>>>",
+      "raw_latex": "$\\{ I _ { n , i } ^ { t r , p u t } \\, = \\, T _ { i } ( I _ { n } ^ { i n p u t } ) \\}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0151>>>",
+      "raw_latex": "$I _ { n } ^ { i n p u t } . \\ \\ \\mathrm { W i t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0152>>>",
+      "raw_latex": "$~ \\{ I _ { n } ^ { o u t p u t } , \\cdots , I _ { n , 0 } ^ { o u t } \\} ~$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0153>>>",
+      "raw_latex": "$\\mathrm { ~ t h e ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0154>>>",
+      "raw_latex": "$\\tilde { I } _ { n , i } ^ { o u t p u t } = T _ { i } ^ { - 1 } ( I _ { n , i } ^ { o u t } ) .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0155>>>",
+      "raw_latex": "$I _ { n } ^ { o u t p u t } = { \\frac { 1 } { 6 } } \\sum _ { i = 1 } ^ { o u t } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0156>>>",
+      "raw_latex": "$\\beta _ { 1 } = \\, 0 . 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0157>>>",
+      "raw_latex": "$\\beta _ { 2 } \\, = \\, 0 . 9 9 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0158>>>",
+      "raw_latex": "$L _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0159>>>",
+      "raw_latex": "$\\times 6 0 0 0 ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0160>>>",
+      "raw_latex": "$H , \\, W$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0161>>>",
+      "raw_latex": "$C .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0162>>>",
+      "raw_latex": "$( C , H , W )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0163>>>",
+      "raw_latex": "$( H , W , C )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0164>>>",
+      "raw_latex": "$( W , C , H ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0165>>>",
+      "raw_latex": "$2 \\times 1 0 ^ { - 4 } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0166>>>",
+      "raw_latex": "$2 0 0 0 \\times 2 0 0 0$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0167>>>",
+      "raw_latex": "$f _ { 0 } , \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0168>>>",
+      "raw_latex": "$f _ { 1 } , \\ f _ { 2 } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0169>>>",
+      "raw_latex": "$\\, f _ { 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0170>>>",
+      "raw_latex": "$f _ { 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0171>>>",
+      "raw_latex": "$x _ { 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0172>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0173>>>",
+      "raw_latex": "$\\beta _ { 1 } = 0 . 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0174>>>",
+      "raw_latex": "$\\beta _ { 2 } = 0 . 9 9 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0175>>>",
+      "raw_latex": "${ \\cal L } _ { t o t a l } = { \\cal L } _ { p i x } + \\lambda { \\cal L } _ { s s i m } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0176>>>",
+      "raw_latex": "$\\mathcal { E } _ { p i x }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0177>>>",
+      "raw_latex": "$\\mathcal { E } _ { s s i m }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0178>>>",
+      "raw_latex": "$2 0 0 0 \\times 2 9 9 6$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0179>>>",
+      "raw_latex": "$5 0 0 \\times 7 4 8 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0180>>>",
+      "raw_latex": "$4 0 0 0 \\times 6 0 0 0$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0181>>>",
+      "raw_latex": "$\\times$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0182>>>",
+      "raw_latex": "$\\mathrm { ~ W e }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0183>>>",
+      "raw_latex": "$1 2 8 \\times 1 2 8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0184>>>",
+      "raw_latex": "$1 0 2 4 \\times 1 0 2 4$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0185>>>",
+      "raw_latex": "$2 5 0 0 0$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0186>>>",
+      "raw_latex": "$\\mathcal { L } _ { 1 } , \\, \\mathcal { L } _ { S S I M } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0187>>>",
+      "raw_latex": "$\\mathcal { L } _ { G r a d }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0188>>>",
+      "raw_latex": "$i . e .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0189>>>",
+      "raw_latex": "$\\mathcal { L } = 0 . 1 * \\mathcal { L } _ { S S I M } + \\mathcal { L } _ { 1 } + \\mathcal { L } _ { G r a d } . \\qquad \\quad ( 1 5 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0190>>>",
+      "raw_latex": "$= 0 . 9$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0191>>>",
+      "raw_latex": "$\\beta _ { 2 } = 0 . 9 9 9 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0192>>>",
+      "raw_latex": "$2 . 5 ~ \\times ~ 1 0 5$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0193>>>",
+      "raw_latex": "$1 e - 6$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0194>>>",
+      "raw_latex": "${ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0195>>>",
+      "raw_latex": "$1 2 8 \\, \\times \\, 1 2 8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0196>>>",
+      "raw_latex": "$2 3 . 0 7$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0197>>>",
+      "raw_latex": "$0 . 1 5 6$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0198>>>",
+      "raw_latex": "$[ 3 4 ] .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0199>>>",
+      "raw_latex": "$4 0 0 0 \\times 6 0 0 0$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0200>>>",
+      "raw_latex": "$\\beta _ { 1 } = 0 . 9 , \\, \\beta _ { 2 } = 0 . 9 9 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0201>>>",
+      "raw_latex": "$=$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0202>>>",
+      "raw_latex": "$L _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0203>>>",
+      "raw_latex": "$L o s s _ { F F T }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0204>>>",
+      "raw_latex": "$L o s s _ { F F T }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0205>>>",
+      "raw_latex": "$i . e .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0206>>>",
+      "raw_latex": "$L o s s _ { F F T } = \\frac { 1 } { n } \\sum _ { i = 1 } ^ { n } \\| F F T ( I _ { g } ) \\| - | F F T ( I _ { i } ) | , \\quad ( 1 6 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0207>>>",
+      "raw_latex": "$L o s s = L o s s _ { F F T } + 2 0 * L o s s _ { L _ { 1 } } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0208>>>",
+      "raw_latex": "$\\mathrm { ~ ( 1 7 ) }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0209>>>",
+      "raw_latex": "$\\mathfrak { Q }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0210>>>",
+      "raw_latex": "$\\ F _ { s i } \\ $",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0211>>>",
+      "raw_latex": "$\\mathrm { s h a l l o w }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0212>>>",
+      "raw_latex": "$\\mathrm { ~ e x t r a c t e d ~ a t ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0213>>>",
+      "raw_latex": "$\\ i ^ { t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0214>>>",
+      "raw_latex": "$x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0215>>>",
+      "raw_latex": "$M _ { E s }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0216>>>",
+      "raw_latex": "$D _ { s i } = \\mathrm { G L S C } _ { s i } ( F _ { s i } ) , \\qquad \\qquad ( 1 9 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0217>>>",
+      "raw_latex": "$D _ { s i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0218>>>",
+      "raw_latex": "$i ^ { t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0219>>>",
+      "raw_latex": "$F _ { s i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0220>>>",
+      "raw_latex": "$i ^ { t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0221>>>",
+      "raw_latex": "$G L S C _ { s i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0222>>>",
+      "raw_latex": "$d _ { s i } = M _ { d s i } ( D _ { s i } ) , \\qquad \\qquad ( 2 0 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0223>>>",
+      "raw_latex": "$d _ { s i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0224>>>",
+      "raw_latex": "$i ^ { t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0225>>>",
+      "raw_latex": "$M _ { d s i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0226>>>",
+      "raw_latex": "$M _ { r }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0227>>>",
+      "raw_latex": "$\\hat { y } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0228>>>",
+      "raw_latex": "$\\ P = d _ { s 1 } + d _ { s 2 } + d _ { s 3 } , \\ $",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0229>>>",
+      "raw_latex": "$d _ { s 1 } , \\ d _ { s 2 } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0230>>>",
+      "raw_latex": "$d _ { s 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0231>>>",
+      "raw_latex": "$P$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0232>>>",
+      "raw_latex": "$\\hat { y }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0233>>>",
+      "raw_latex": "$\\mathcal { L } _ { M F N N }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0234>>>",
+      "raw_latex": "$\\mathcal { L } _ { M F N N } = \\alpha * L _ { 1 } + \\beta * \\mathcal { L } _ { V G G } + \\gamma * \\mathcal { L } _ { M S S S I M } , ~ ~ ~ ( 2 3 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0235>>>",
+      "raw_latex": "$\\alpha , \\, \\beta ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0236>>>",
+      "raw_latex": "$\\gamma$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0237>>>",
+      "raw_latex": "$\\alpha = 0 . 5 , \\beta = 0 . 7 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0238>>>",
+      "raw_latex": "$\\gamma = 0 . 5 . ~ { \\cal L } _ { M F N N }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0239>>>",
+      "raw_latex": "$\\, L _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0240>>>",
+      "raw_latex": "$\\mathcal { L } _ { M F N N }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0241>>>",
+      "raw_latex": "$\\theta$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0242>>>",
+      "raw_latex": "$N$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0243>>>",
+      "raw_latex": "$x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0244>>>",
+      "raw_latex": "$y$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0245>>>",
+      "raw_latex": "$M F N N ( \\cdot )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0246>>>",
+      "raw_latex": "$\\beta _ { 1 } \\, = \\, 0 . 9 , \\, \\beta _ { 2 } \\, = \\, 0 . 9 9 9 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0247>>>",
+      "raw_latex": "$\\epsilon ~ = ~ 1 0 e ^ { - 8 } , ~ \\mathrm { a n d }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0248>>>",
+      "raw_latex": "$l r ~ = ~ 0 . 0 0 0 2 . ~ \\mathrm { ~ W e }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0249>>>",
+      "raw_latex": "${ \\cal L } _ { M F N N } . ~$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0250>>>",
+      "raw_latex": "$\\times$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0251>>>",
+      "raw_latex": "$\\ell _ { 1 } / \\ell _ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0252>>>",
+      "raw_latex": "$i$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0253>>>",
+      "raw_latex": "$j$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0254>>>",
+      "raw_latex": "$\\hat { f } _ { h } ( i , j ) = \\frac { 2 } { N h } \\sum _ { i = x } \\frac { 1 } { 2 } \\{ \\frac { | x - i | } { h } < 1 \\} \\cdot \\frac { 1 } { 2 } \\{ \\frac { | \\tilde { x } - j | } { h } < 1 \\}$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0255>>>",
+      "raw_latex": "$= \\frac { 2 } { N \\hbar } \\sum _ { x \\in X } K _ { 1 } ( \\frac { x - i } { h } ) \\cdot K _ { 2 } ( \\frac { \\bar { z } - j } { h } ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0256>>>",
+      "raw_latex": "$( 2 5 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0257>>>",
+      "raw_latex": "$\\mathcal { K } _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0258>>>",
+      "raw_latex": "$\\mathcal { K } _ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0259>>>",
+      "raw_latex": "$\\mathrm { \\ L e t } ~ P$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0260>>>",
+      "raw_latex": "$Q$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0261>>>",
+      "raw_latex": "$H _ { s } ( P , Q ) = D _ { K L } ( P | | Q ) = - \\sum _ { i = 0 } ^ { L } \\sum _ { i , j } p _ { i , j } \\log \\frac { q _ { i , j } } { p _ { i , j } } , \\ ( 2 6 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0262>>>",
+      "raw_latex": "$\\ell _ { 1 } / \\ell _ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0263>>>",
+      "raw_latex": "$1 2 8 \\times$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0264>>>",
+      "raw_latex": "$y \\, = \\, z \\, \\otimes \\, x ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0265>>>",
+      "raw_latex": "$x$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0266>>>",
+      "raw_latex": "$H _ { \\theta }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0267>>>",
+      "raw_latex": "$\\theta$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0268>>>",
+      "raw_latex": "$t$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0269>>>",
+      "raw_latex": "$t = 0 , . . . , T - 1 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0270>>>",
+      "raw_latex": "$u _ { t } = H _ { \\theta } ( x _ { t } )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0271>>>",
+      "raw_latex": "$x _ { t + 1 } =$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0272>>>",
+      "raw_latex": "$x _ { t } + u _ { t } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0273>>>",
+      "raw_latex": "$x _ { 0 } ~ = ~ y . ~$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0274>>>",
+      "raw_latex": "$H$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0275>>>",
+      "raw_latex": "$\\theta$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0276>>>",
+      "raw_latex": "$H _ { \\theta }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0277>>>",
+      "raw_latex": "$u _ { t }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0278>>>",
+      "raw_latex": "$s \\, = \\, K _ { \\theta } ( z ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0279>>>",
+      "raw_latex": "$K _ { \\theta }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0280>>>",
+      "raw_latex": "$\\theta$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0281>>>",
+      "raw_latex": "$v \\ = \\ y \\ + \\ s , \\ w h e r e $",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0282>>>",
+      "raw_latex": "$( t \\, \\geq \\, 1 ) . \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0283>>>",
+      "raw_latex": "$t ^ { t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0284>>>",
+      "raw_latex": "$( t \\; \\geq \\; 1 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0285>>>",
+      "raw_latex": "$F ( x _ { t } ) \\; \\rightarrow \\; F ( G ( x _ { t } ) ) . \\;$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0286>>>",
+      "raw_latex": "$N$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0287>>>",
+      "raw_latex": "$x _ { t , i }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0288>>>",
+      "raw_latex": "$t \\mathrm { - t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0289>>>",
+      "raw_latex": "$i - t h$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0290>>>",
+      "raw_latex": "$F ( G ( x _ { t , i } ) )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0291>>>",
+      "raw_latex": "$t \\mathrm { - t h }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0292>>>",
+      "raw_latex": "$i - t h$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0293>>>",
+      "raw_latex": "$\\beta _ { 1 } \\, = \\, 0 . 9 , \\, \\beta _ { 2 } \\, = \\, 0 . 9 9 9 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0294>>>",
+      "raw_latex": "$\\epsilon = 1 0 e ^ { - 8 } ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0295>>>",
+      "raw_latex": "$l r = 0 . 0 0 0 2 .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0296>>>",
+      "raw_latex": "$\\mathcal { L } _ { \\mathrm { t o t a l } } = \\mathcal { L } _ { \\mathrm { s m o o t h } } + \\alpha \\mathcal { L } _ { \\mathrm { M S - S S H } } + \\beta \\mathcal { L } _ { \\mathrm { p e r } } , \\qquad ( 2 8 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0297>>>",
+      "raw_latex": "$\\alpha = 0 . 0 1 , \\beta = 0 . 0 1 ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0298>>>",
+      "raw_latex": "$\\gamma = 0 . 0 0 5$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0299>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0300>>>",
+      "raw_latex": "$\\{ 3 1 ] ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0301>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { - 4 } .$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0302>>>",
+      "raw_latex": "$0 . 8$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0303>>>",
+      "raw_latex": "$5 \\times 1 0 ^ { 3 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0304>>>",
+      "raw_latex": "$2 5 6 \\times$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0305>>>",
+      "raw_latex": "$K$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0306>>>",
+      "raw_latex": "$l _ { 1 } , \\ S S I M$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0307>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { - 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0308>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { 4 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0309>>>",
+      "raw_latex": "$1 \\times 1 0 ^ { 5 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0310>>>",
+      "raw_latex": "$L = L _ { r e c o n } + \\lambda _ { r e f } \\cdot L _ { r e f } + \\lambda _ { n o i s e } \\cdot L _ { n o i s e } , \\qquad ( 2 9 )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0311>>>",
+      "raw_latex": "$\\, L _ { r e c o n } , \\ L _ { r e f } \\,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0312>>>",
+      "raw_latex": "$\\, L _ { n o i s e }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0313>>>",
+      "raw_latex": "$\\lambda _ { r e f } , \\ \\lambda _ { n o i s e }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0314>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0315>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0316>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0317>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0318>>>",
+      "raw_latex": "$3 \\times 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0319>>>",
+      "raw_latex": "$3 e - 4$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0320>>>",
+      "raw_latex": "$1 e - 6$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0321>>>",
+      "raw_latex": "$L _ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0322>>>",
+      "raw_latex": "$1$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0323>>>",
+      "raw_latex": "$\\mathrm { L i u } ^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0324>>>",
+      "raw_latex": "$ ( z o n g w e i . w u ( { \\mathfrak { C } } u n i - w u e r z b u r g . d e ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0325>>>",
+      "raw_latex": "$\\mathbb { Q }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0326>>>",
+      "raw_latex": "$\\mathrm { Z h a n g ^ { 1 } }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0327>>>",
+      "raw_latex": "$\\mathbb { Q }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0328>>>",
+      "raw_latex": "$ ( r a d u . t i m o f t e $",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0329>>>",
+      "raw_latex": "$ u n i - w u e r z b u r g . d e )$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0330>>>",
+      "raw_latex": "$^ 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0331>>>",
+      "raw_latex": "$\\mathrm { C a i } ^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0332>>>",
+      "raw_latex": "$\\mathrm { B i a n ^ { 2 } , }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0333>>>",
+      "raw_latex": "$^ { - 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0334>>>",
+      "raw_latex": "$\\mathrm { ~ Z h a n g ^ { 1 } ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0335>>>",
+      "raw_latex": "$\\mathrm { ~ S u i y i ~ Z h a o ^ { 1 } , ~ B o }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0336>>>",
+      "raw_latex": "$\\mathrm { G a o ^ { 1 , 2 } , T o n g }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0337>>>",
+      "raw_latex": "$^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0338>>>",
+      "raw_latex": "$^ 2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0339>>>",
+      "raw_latex": "$ ( s a b a r i n a t h a n t c e $",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0340>>>",
+      "raw_latex": "$ U m a ^ { 2 } , A$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0341>>>",
+      "raw_latex": "$^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0342>>>",
+      "raw_latex": "$ A h m a d ’ A t h i f M o h d F a u d z i ^ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0343>>>",
+      "raw_latex": "$\\mathrm { L i a n } ^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0344>>>",
+      "raw_latex": "$\\mathbb { C }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0345>>>",
+      "raw_latex": "$\\operatorname { L i a n } ^ { 2 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0346>>>",
+      "raw_latex": "$^ 2$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0347>>>",
+      "raw_latex": "$\\mathrm { ~ K a l y a n s h e t t i ^ { 1 , 3 } ~ }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0348>>>",
+      "raw_latex": "$ k l e t e c h . a c . i n ) ,$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0349>>>",
+      "raw_latex": "$\\mathrm { C ^ { 1 , 3 } }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0350>>>",
+      "raw_latex": "$^ { 1 }$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0351>>>",
+      "raw_latex": "$^ 3$",
+      "is_display_math": false
+    },
+    {
+      "token_placeholder": "<<<MATH_TOKEN_0352>>>",
+      "raw_latex": "$^ 2$",
+      "is_display_math": false
+    }
+  ]
+}

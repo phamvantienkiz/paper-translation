@@ -1,0 +1,349 @@
+The spatial attention module resembles the NAF-
+Block [7] with an inverted residual block followed by sim-
+plified channel attention (SCA). Instead of using activa-
+tions, we use a simple gating mechanism, allowing our
+model to extract meaningful spatial information for en-
+hancement in the frequency domain.
+
+As suggested by other works [33, 44] the information re-
+lated to the light conditions of the image depends mainly on
+the amplitude in the frequency domain. To enhance this, we
+apply the Fast Fourier Transform (FFT) and operate only
+over its amplitude. After this operation, we transform again
+to the space domain with the Inverse Fast Fourier Trans-
+form (IFFT). The Fre-MLP serves as an additional atten-
+tion mechanism. In this context, the MLP operating in the
+amplitude has better benefits than operating in the spatial
+domain (e.g., channel MLP [56]).
+
+The encoder uses strided convolutions to downsample
+the features. After each level, the features have half of their
+original spatial resolution, which implies that more encoder
+blocks can be used in the deep levels without significantly
+increasing the number of operations.
+
+Finally, the encoder will provide illumination-enhanced
+features to the decoder, and already a low-resolution estima-
+tion of the clean image x. This low-resolution image is xˆ↓8
+estimated as a combination of the encoded deep features, it
+has a resolution 8× lower than the original one. Although
+it is a small estimation, the illumination (and amplitude) are
+consistent across scales [28].
+
+The decoder block (DBlock) focuses on spatial transforma-
+tions. The input of the decoder is a deep representation
+of <<<MATH_TOKEN_0013>>> thus we can assume: (1) the decoder should focus
+on upsampling such an initial estimation, (2) the decoder
+should focus on reducing the blur and improving sharpness,
+since the illumination has been corrected by the encoder. In
+this block, we also maintain the metaformer structure [56]:
+
+<<<MATH_TOKEN_0014>>>
+<<<MATH_TOKEN_0015>>>
+
+Inspired by Large Kernel Attention (LKA) [17], we cre-
+ated the Dilated-Spatial Attention Module (Di-SpAM). Un-
+
+like LKA [17], we use features at 3 different levels, us-
+ing three dilated depth-wise convolutions with expand (di-
+lation) factors 1,4,9. The attributes from the three branches
+are combined together, then we apply simplified channel at-
+tention to further enhance the features. Finally, we use an
+MLP with simple gates instead of activations [7].
+
+Besides the new block designs, the loss function helped to
+maximize the potential of our approach. We use a com-
+bination of distortion losses and perceptual losses to opti-
+mize our model <<<MATH_TOKEN_0016>>> First, to ensure high-fidelity (low distor-
+tion), we use <<<MATH_TOKEN_0017>>> defined as: <<<MATH_TOKEN_0018>>> where
+<<<MATH_TOKEN_0019>>> and <<<MATH_TOKEN_0020>>> are, respectively, the enhanced and the
+ground-truth (clean) images. Thus, <<<MATH_TOKEN_0021>>> is the <<<MATH_TOKEN_0022>>> loss.
+
+To ensure high-fidelity, we use l1 norm loss and for per-
+ceptual similarity we incorporate loss <<<MATH_TOKEN_0023>>> For the last
+one, we use LPIPS [60] based on VGG19 [43] to calculate
+the distance between features of our images:
+
+<<<MATH_TOKEN_0024>>>
+
+Using this loss, we make sure that the network will pro-
+duce a pleasant image, close to the clean reference. Follow-
+ing [41], we also incorporate the gradient (∇) edge loss:
+
+<<<MATH_TOKEN_0025>>>
+
+that enforces consistency and accuracy in the reconstruc-
+tion of the edges (high-frequencies).
+
+Finally, similar to LEDNet <<<MATH_TOKEN_0026>>> we included <<<MATH_TOKEN_0027>>> an ar-
+chitecture guiding loss to assert that the encoder focuses on
+the low-light enhancing. This loss works over the upsam-
+pled output of the encoder <<<MATH_TOKEN_0028>>>
+
+<<<MATH_TOKEN_0029>>>
+
+comparing it with the reference <<<MATH_TOKEN_0030>>> Note that <<<MATH_TOKEN_0031>>> indi-
+cates an 8× resolution upsampling of the encoder output,
+obtained by bilinear interpolation.
+
+The complete loss function is then:
+
+<<<MATH_TOKEN_0032>>>
+The constants <<<MATH_TOKEN_0033>>> and <<<MATH_TOKEN_0034>>> are loss weights empiri-
+cally set to 1, <<<MATH_TOKEN_0035>>> and 50 respectively.
+
+(4) To train our model and evaluate its ability to reconstruct
+(5) low-light blurred images, we use the LOLBlur dataset [65].
+Although there are other datasets for this task such as
+NBDN [6], LOLBlur offers a large-scale synthetic dataset
+produced using a sophisticated pipeline.
+
+Table 1. Quantitative evaluation on the LOLBlur dataset. DarkIR achieves new state-of-the-art results in distortion and perceptual
+metrics. Moreover, we have 55% less parameters than LEDNet[65] and 88% less than Restormer [57], which is key in memory-constrained
+devices. This table –specially numbers for previous methods retrained in LOLBlur– recovers results on previous analysis [65] and adds
+new retrained ones. Best and second best results are bolded and underlined, respectively.
+
+KinD++[61] DRBN[54]
+DeblurGAN-v2[25]
+MIMO[8]
+NAFNet[9]
+LEDNet[65]
+RetinexFormer[3]
+Restormer[57]
+DarkIR-m (Ours)
+DarkIR-l (Ours)
+21.26
+21.78
+22.30
+22.41
+25.36
+25.74
+<<<MATH_TOKEN_0036>>>
+26.72
+27.30
+PSNR (dB) ↑
+27.00
+SSIM ↑
+<<<MATH_TOKEN_0037>>>
+<<<MATH_TOKEN_0038>>>
+<<<MATH_TOKEN_0039>>>
+0.835
+<<<MATH_TOKEN_0040>>>
+<<<MATH_TOKEN_0041>>>
+0.887
+0.902
+0.883
+0.898
+LPIPS ↓
+0.359
+0.325
+<<<MATH_TOKEN_0042>>>
+0.262
+<<<MATH_TOKEN_0043>>>
+<<<MATH_TOKEN_0044>>>
+0.181
+0.133
+0.162
+0.137
+Params (M) ↓
+1.2
+0.6
+60.9
+6.8
+12.05
+7.4
+<<<MATH_TOKEN_0045>>>
+26.13
+3.31
+12.96
+MACs (G) ↓
+34.99
+48.61
+67.25
+12.3
+38.65
+15.57
+144.25
+7.25
+27.19
+
+ed
+tec
+Input
+LEDNet
+RetinexFormer
+NAFNet
+Restormer
+Ours-m
+Ours-l
+GT
+
+![Figure 3. Qualitative comparisons on the LOLBlur dataset (synthetic samples from the testset).](figures/figure_03.png)
+
+Figure 3. Qualitative comparisons on the LOLBlur dataset (synthetic samples from the testset).
+
+LOLBlur
+has 10200 training pairs, and 1800 testing
+pairs. Note that this is a synthetic dataset, although gener-
+ated in a realistic manner [65]: the data is generated by av-
+eraging frames to synthesize blur and darkening the normal-
+light images with EC-Zero-DCE (a variant of Zero-DCE
+[16]). We use the dataset variant that includes real sensor
+noise, which makes our model more effective in challeng-
+ing conditions and real scenarios.
+
+Real-LOLBlur is a real-world test dataset, that con-
+tains 482 real-world night blurry images selected from Re-
+alBlur [40] to verify the generalization of the proposed
+method. Note that these images do not have a ground-truth
+since these were captured in the wild.
+
+LOLv2 (real) is a real-world dataset that includes 689
+low/high paired images for training and 100 low/high paired
+images for testing. Note that LOLv2-Real [55] is the ex-
+tended version of LOL[47], thus we use the v2 version di-
+rectly. We also use LOLv2-Synthetic that includes 900 pairs
+of low/high images for training and 100 validation ones.
+
+LSRW includes images from a DSLM Nikon camera and
+a Huawei smartphone. The LSRW-Nikon dataset is com-
+posed of 3150 training image pairs and 20 testing image
+pairs. The LSRW-Huawei dataset contains 2450 pairs of
+images and 30 pairs for training and validation, respectively.
+
+We quantitatively and qualitatively evaluate the proposed
+DarkIR on the LOLBlur Dataset [65]. Implementations de-
+
+tails can be found in the supplementary. We retrained some
+general purpose state-of-the-art methods in LOLBlur and
+compare them with LEDNet [65] and our proposed net-
+work.We follow the baseline methods analyzed in previous
+works: (1,2) zero-shot methods trained for real-world cases,
+and (3) fine-tuned methods for this particular task.
+
+<<<MATH_TOKEN_0046>>> LLIE <<<MATH_TOKEN_0047>>> Deblurring. <<<MATH_TOKEN_0048>>> consider Zero-DCE <<<MATH_TOKEN_0049>>>
+RUAS [30] and RetinexFormer [3] as LLIE models, fol-
+lowed by a deblurring network like MIMO-UNet [8] or
+NAFNet [7].
+
+2. Deblurring → LLIE. For deblurring, we include pop-
+ular baselines such as DeblurGAN-v2 [25] trained on the
+RealBlur [40] dataset, and MIMO-UNet [8] or NAFNet [7]
+trained on the GoPro [38] dataset. We employ Zero-
+DCE [16] and RetinexFormer [3] for light enhancement.
+
+3. End-to-end training on the LOLBlur dataset.
+We consider the following LLIE models retrained on
+the LOLBlur dataset:
+KinD++ [61], DRBN [54] and
+
+RetinexFormer[3]. In addition, we consider four deblur-
+ring networks: DeblurGAN-v2 [25], NAFNet[9], MIMO-
+UNet [8] and Restormer[57].
+
+Evaluation Metrics. We employ traditional quality (dis-
+tortion) metrics PSNR and SSIM for evaluation on the syn-
+thetic LOLBlur dataset. To evaluate the perceptual qual-
+ity of the restored images, we use the perceptual metric
+LPIPS [60] between the reference and reconstructed image.
+Quantitative and Qualitative Results In Table 1 we
+compare with fine-tuned methods for this task. We improve
+
+Table 2. Additional quantitative evaluation on LOLBlur dataset with enhancement pipelines (Deblurring + LLIE).
+
+1. LLIE <<<MATH_TOKEN_0050>>> Deblurring
+2. Deblurring <<<MATH_TOKEN_0051>>> LLIE
+Zero-DCE [16]
+RUAS [30]
+RetinexFormer [3]
+Chen [5]
+DeblurGAN-v2 [25]
+MIMO [8]
+NAFNet [7]
+DarkIR-m (Ours)
+→ MIMO [8]
+→ MIMO [8]
+<<<MATH_TOKEN_0052>>> NAFNet <<<MATH_TOKEN_0053>>>
+→ Zero-DCE [16]
+→ Zero-DCE [16]
+→ Zero-DCE [16]
+<<<MATH_TOKEN_0054>>> RetinexFormer <<<MATH_TOKEN_0055>>>
+End-to-End
+PSNR (dB) ↑
+17.68
+17.81
+17.16
+17.02
+18.33
+17.52
+14.66
+27.00
+SSIM ↑
+0.542
+0.569
+<<<MATH_TOKEN_0056>>>
+<<<MATH_TOKEN_0057>>>
+<<<MATH_TOKEN_0058>>>
+<<<MATH_TOKEN_0059>>>
+<<<MATH_TOKEN_0060>>>
+0.883
+LPIPS ↓
+0.510
+0.523
+0.392
+<<<MATH_TOKEN_0061>>>
+0.476
+0.498
+0.465
+0.162
+
+MIMO-UNet → Zero-DCE
+RUAS → MIMO-UNet
+Chen’s Oid <<<MATH_TOKEN_0062>>> MIMO-UNet $$
+<<<MATH_TOKEN_0063>>>
+
+DeblurGAN-v2
+MIMO-UNet
+Ground Truth
+DRB
+DarkIR (ours)
+
+![Figure 4. Additional visual comparisons on the LOLBlur [65] dataset with 2-step pipelines. DarkIR generates much sharper images with
+visually pleasing results. (Zoom in for best view).](figures/figure_04.png)
+
+Figure 4. Additional visual comparisons on the LOLBlur [65] dataset with 2-step pipelines. DarkIR generates much sharper images with
+visually pleasing results. (Zoom in for best view).
+
+the previous state-of-the-art LEDNet [65] by +1db in terms
+of PSNR, and reduce LPIPS by half. Table 1 also showcases
+that DarkIR performs better than most of the other general
+purpose methods, while reducing parameters and comput-
+ing cost. Figure <<<MATH_TOKEN_0064>>> qualitatively supports these results.
+
+In Table <<<MATH_TOKEN_0065>>> we compare with 2-step (zero-shot) pipelines,
+with a clear dominance of DarkIR. Figure 4 compares
+DarkIR with 2-step pipelines, where it shows more detail
+and sharpness. We provide more results in the appendix.
+Multi-Task Results.
+We also trained our model for prac-
+tical low-light restoration purposes, combining LOLBlur,
+LOLv2-Real, LOLv2-Synthetic and LSRW datasets (as all-
+in-one restoration methods [11, 27, 39, 59]). Results can
+be seen in Table 3 and Table 4. As a multi-task method,
+DarkIR-mt outperforms previous LLIE methods, while be-
+ing also robust to blur (previous methods are only robust
+to illumination and noise). However, the performance in
+LOLBlur is 26.62 dB, suffering a slight -0.4dB loss in
+PSNR. Figures <<<MATH_TOKEN_0066>>> and <<<MATH_TOKEN_0067>>> showcase these results in LSRW
+and LOLv2-Real datasets, respectively. We provide addi-
+tional details in the supplementary.
+
+We use the Real-LOLBlur [65] to evaluate the robustness
+of our method in real-world cases. Since there is no ground-
+truth for the test images, we use well-known blind quality
+
+Table 3.
+
+Metrics on the LSRW dataset (50 test images from
+
+Huawei and Nikon) [19]. All the values are adopted from [35, 53].

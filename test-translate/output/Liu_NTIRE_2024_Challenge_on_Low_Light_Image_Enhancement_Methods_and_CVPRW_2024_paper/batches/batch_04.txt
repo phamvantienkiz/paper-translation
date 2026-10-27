@@ -1,0 +1,281 @@
+The main architecture of the UHDMamba is shown
+in Fig. 4, which consists of three components: Shallow
+feature extraction, Deep feature enhancement, and Upsam-
+pling reconstruction. Given a low-quality (LQ) input im-
+age <<<MATH_TOKEN_0136>>> we first employ a <<<MATH_TOKEN_0137>>> convolu-
+tion layer from the shallow feature extraction to generate
+the shallow feature <<<MATH_TOKEN_0138>>> where H and W rep-
+resent the height and width of the input image, C is the
+number of channels, and S is the downsample scale factor.
+Subsequently, the shallow feature <<<MATH_TOKEN_0139>>> undergoes downsam-
+ple operation and the deep feature enhancement stage to ac-
+quire the deep feature <<<MATH_TOKEN_0140>>> at the <<<MATH_TOKEN_0141>>> layer,
+l ∈ 1, 2, ..., L. This stage is stacked by multiple Residual
+State-Space Blocks (RSSBs). Finally, we use the element-
+wise sum to obtain the input of the high-quality reconstruc-
+tion stage <<<MATH_TOKEN_0142>>> which is used to Upsample re-
+construct the high-quality (HQ) output image <<<MATH_TOKEN_0143>>>
+
+Input
+Output
+1/2 3 4
+1, B= exp(AA)
+nfold
+
+<<<MATH_TOKEN_0144>>>
++Bx
+
+<<<MATH_TOKEN_0145>>>
+<<<MATH_TOKEN_0146>>>
+423 1
+
+(b) 2D-Selective Scan Module
+
+![Figure 4. An overview of our UHDMamba for UHD Low Light Enhancement.](figures/figure_04.png)
+
+Figure 4. An overview of our UHDMamba for UHD Low Light Enhancement.
+
+Implementation: The proposed method conducts exper-
+iments in PyTorch on two NVIDIA GeForce RTX 3090
+GPUs. To optimize the network, the model employs the
+Adam <<<MATH_TOKEN_0147>>> optimizer with a learning rate <<<MATH_TOKEN_0148>>>
+randomly crop the full-resolution image to a resolution of
+<<<MATH_TOKEN_0149>>> as the input and perform 200k iterations of train-
+ing with a batch size of 4. To augment the training data,
+random horizontal and vertical flips are applied to the input
+images. The number of RSSB and feature channels is set to
+8 and 48, respectively. DownSampler and UpSampler are
+both composed of a sub-pixel convolutional layer.
+
+In order to maximize the potential performance of our
+model, the method adopts the Test Time Augmentation
+strategy (TTA). During the test time, it used 90°, 180°, 270°
+rotation, horizontal flip, and vertical flip to generate six aug-
+mented inputs <<<MATH_TOKEN_0150>>> from input left and
+right images <<<MATH_TOKEN_0151>>> those augmented input images
+and the original input image, we generate corresponding
+clear images <<<MATH_TOKEN_0152>>> using <<<MATH_TOKEN_0153>>> networks.
+We then apply an inverse transform to those output im-
+ages to get the original geometry <<<MATH_TOKEN_0154>>>
+Finally, we average the transformed outputs altogether to
+make the TTA result as follows. <<<MATH_TOKEN_0155>>>
+
+Input
+(3, H, W)
+Conv
+(3, H, W)
+Conv
+(18, H, W)
+Encoder + Downsample
+(18, H/2, W/2)
+4
+Encoder + Downsample
+(288, H/32, W/32)
+Encoder
+(288, H/32, W/32)
+Upsample + Decoder
+(18, H/2, W/2)
+Upsample + Decoder
+(18, H, W)
+Con
+lpips loss
+(3, H, W)
+fft loss
+Out
+1 loss
+
+Description: Low light enhancement refers to a process or
+set of techniques in computer vision aimed at improving
+the visual quality of images by adjusting their lighting con-
+ditions. This process can involve increasing the brightness
+and contrast, correcting underexposed or overexposed ar-
+eas, and enhancing details in shadows and highlights. The
+goal is to produce images that more accurately reflect the
+scene as perceived by the human eye, even under less-than-
+ideal lighting conditions. However, complex models are
+
+![Figure 5. The network architecture of team LVGroup HFUT.](figures/figure_05.png)
+
+Figure 5. The network architecture of team LVGroup.HFUT.
+
+![Figure 5. The network architecture of team LVGroup HFUT.](figures/figure_05.png)
+
+difficult to reason about on the GPU, limited by the larger
+image resolution. Therefore, NAFNet [18] is chosed as
+baseline and further lighten NAFNet based on it to get a
+brand new structure. Specifically, the number of channels
+is kept constant at the early stage of the encoding phase and
+at the end of the decoding phase, while the up- and down-
+sampling operations are performed, as shown in Fig. 5.
+
+More specifically, the input image is initially subjected to
+pixel alignment and convolution operations, during which
+the number of channels is expanded from 3 to 8. Subse-
+quently, the image passes through an encoder and a down-
+
+sampling module, resulting in an increase in channel count
+to 288, while its dimensionality is reduced to one-thirty-
+second of its original size. Following this, a decoder accom-
+panied by an upsampling module is applied, which adjusts
+the channel count to 18 and restores the dimensions to their
+original size. The final output is then obtained through a
+convolutional layer. During the training process, the model
+is constrained using a combination of lpips loss, fft loss, and
+L1 loss to optimize performance and ensure fidelity to the
+input image.
+
+Implementation: The proposed architecture is based on
+PyTorch 2.2.1 and an NVIDIA 4090 with 24G memory.
+2000 epochs are set for training with batch size 2, using
+AdamW with <<<MATH_TOKEN_0156>>> and <<<MATH_TOKEN_0157>>> for optimization.
+The initial learning rate was set to 0.001, and cosine anneal-
+ing was used for learning rate adjustment. The randomly
+crop the image to 768×768 is first performed and then hor-
+izontal flip with probability 0.5 is performed for data aug-
+ment. The input image is fed into the network, and it is con-
+strained using three loss functions: lpips loss with weight
+0.5, fft loss with weight 0.1, and <<<MATH_TOKEN_0158>>> loss with weight 1.
+
+The testing process begins by combining a total of
+10 equally-spaced checkpoints obtained in training phase.
+Specifically, the input image with original resolution se-
+quentially passes through these 10 checkpoints, resulting in
+10 outputs. Finally, the model ensemble strategy is applied
+to process these 10 outputs, yielding the ultimate output.
+Besides, since the test set contains images with too large
+resolution (4000 <<<MATH_TOKEN_0159>>> A100 (40G memory) is used for
+inference to avoid the ‘cuda out of memory’ error.
+
+![Figure 6. The network architecture of team Try1try8.](figures/figure_06.png)
+
+Figure 6. The network architecture of team Try1try8.
+
+Description: Due to the large resolution of the in-
+ference images, the authors added a downsampling op-
+eration to the RetinexFormer, renaming it to Retinex-
+FormerD. The authors employed a RetinexFormerD model
+architecture with varying training patch sizes, and cas-
+caded it with a denoising model (HatD) and a fine-tuning
+
+![Figure 6. The network architecture of team Try1try8.](figures/figure_06.png)
+
+model(RetinexFormerDseg). Finally, the authors performed
+a model ensemble of all the model results. The model is
+shown in Fig. 6.
+
+Implementation: path1: Initially, the authors applied
+downsampling to the RetinexFormer to create Retinex-
+FormerD (due to the large size of the inference images), fol-
+lowed by the use of the HATD model (which incorporates
+the HAT model with downsampling) to denoise the infer-
+ence results of RetinexFormerD. Ultimately, RetinexForm-
+erSeg (which integrates image segmentation results into the
+model) was utilized to fine-tune the final results. path2: The
+authors trained RetinexFormerD with various patch sizes
+and stages, resulting in three Retinex-FormerD models:
+RetinexFormerD ds2s1 with a patch size of 1024, Retinex-
+FormerD ds2s2 with a patch size of 768, and Retinex-
+FormerD ds2s4 with a patch size of 512. Finally, the au-
+thors averaged the results obtained from path1 and path2.
+The model is trained with Adam optimizer, 2e-4 as learning
+rate, and on V100
+
+4.8. Pixel warrior
+
+DownSampler
+MLP
+Block
+MLP
+Block
+MLP
+Block
+MLP
+Block
+MLP
+Block
+MLP
+Block
+MLP
+Block
+MLP
+Block
+UpSampler
+
+![Figure 7. The network architecture of team Pixel warrior.](figures/figure_07.png)
+
+Figure 7. The network architecture of team Pixel warrior.
+
+Description: The team proposes an efficient vision MLP-
+based architecture for low-light enhancement (see Fig. 7).
+Our MLP block contains dimension transformation opera-
+tions (see Fig. 8). Specifically, we first normalize the input
+features, and then perform multi-stage dimension transfor-
+mations to rotate the spatial perspective of tensors across 3
+dimensions of <<<MATH_TOKEN_0160>>> and <<<MATH_TOKEN_0161>>> Here, the 3D feature map un-
+dergoes recursive encoding from <<<MATH_TOKEN_0162>>> to <<<MATH_TOKEN_0163>>>
+and then to <<<MATH_TOKEN_0164>>> enabling the capture of global spa-
+tial information through multi-view dimensions. Finally,
+we adjust the feature map to the original resolution, and
+interact with the input features to activate useful features.
+Implementation: We conduct network training on four
+NVIDIA Tesla V100 GPUs with 32GB memory. In total,
+we perform 500 epochs of training. During the training, we
+adopt the Adam optimizer with a learning rate of <<<MATH_TOKEN_0165>>>
+The patch size is set to be <<<MATH_TOKEN_0166>>> pixels and the batch
+size is set to be 4. To augment the training data, we apply
+random horizontal and vertical flips.
+
+Description: The team introduced LLformer [69] to ad-
+dress this issue. As shown in Fig. 9, given a low-light
+image, LLformer first extracts shallow features <<<MATH_TOKEN_0167>>> which
+are then fed into three sequential Transformer blocks to ex-
+tract deep features. Specifically, the intermediate features
+
+Interpolate
+1×1 Conv
+GELU
+Premute
+1×1 Conv
+Sigmoid
+Premute
+Interpolate
+
+Height Axis Multi-head Attention
+
+![Figure 8. The network architecture of the MLP block.](figures/figure_08.png)
+
+Figure 8. The network architecture of the MLP block.
+
+![Figure 9. Illustration of the propsed LLformer.(Re-produced from
+LLformer [69])](figures/figure_09.png)
+
+Figure 9. Illustration of the propsed LLformer.(Re-produced from
+LLformer [69])
+
+output from the Transformer blocks are denoted as <<<MATH_TOKEN_0168>>>
+f3. These features are aggregated and transformed into en-
+hanced image features <<<MATH_TOKEN_0169>>> using the proposed cross-layer
+attention fusion block. Subsequently, deep feature extrac-
+tion is performed on <<<MATH_TOKEN_0170>>> using four stages in the encoder.
+Specifically, each stage includes Patch Merging and Axis-
+Transformer blocks. Then, the low-resolution latent fea-
+tures are gradually restored to a high-resolution representa-
+tion using the decoder, which consists of three stages and
+takes <<<MATH_TOKEN_0171>>> as input. <<<MATH_TOKEN_0172>>> Each stage consists of Patch Expand-
+ing and Axis-Transformer blocks. To reduce information
+loss at the encoding end and achieve better feature restora-
+tion at the decoding end, weighted skip connections with
+1 × 1 convolutions are used for feature fusion in both the
+encoding and decoding ends. Thirdly, after decoding, the
+deep features f are sequentially processed through three
+Axis-Transformer blocks and a cross-layer attention fusion
+block to generate enhanced features for image reconstruc-
+tion. Finally, the enhanced image is produced. The Axis-
+Transformer block, as shown in Fig. 10, performs self-
+attention mechanism along the height and width axes of the
+features in the cross-channel dimension to capture non-local
+self-similarity and long-range correlations with lower com-
+putational complexity. The Cross-Attention Fusion block,
+as shown in Fig. 11, learns attention weights between dif-
+ferent layer features and adaptively fuses features with the
+learned weights to improve feature representation.

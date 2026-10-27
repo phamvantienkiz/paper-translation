@@ -1,0 +1,218 @@
+In the low-frequency branch, three Low-Frequency
+Blocks (LF Blocks) handle and extract low-frequency fea-
+tures. Subsequently, after each LF Block, a DWT block
+re-divides the output, channeling the high-frequency fea-
+tures to the high-frequency branch. Within the high-
+frequency branch, the existing high-frequency features are
+fused with those received via the DWT block from the
+low-frequency branch, before undergoing processing by the
+High-Frequency Block (HF Block). A total of four HF
+Blocks are employed in this process. This approach enables
+the model to preserve high-frequency features while con-
+centrating on the recovery of low-frequency information.
+Given that the low-frequency subbands of the image have
+more errors, our approach involves making the LF Block
+deeper and more complex compared to the HF Block.
+
+The outputs of the three LF Blocks are concatenated,
+while the outputs of the last three HF Blocks are also con-
+catenated. Both sets of features are then fused and the
+final image generated. The model is trained using two
+loss functions: the <<<MATH_TOKEN_0202>>> loss and a frequency-domain-based
+loss <<<MATH_TOKEN_0203>>> derived from Fast Fourier Transform (FFT).
+<<<MATH_TOKEN_0204>>> is defined by Eq. (16), and the overall loss is de-
+termined by Eq. (17). Incorporating a frequency-based loss
+enhances model stability since the network is extracting fea-
+tures in the frequency domain, <<<MATH_TOKEN_0205>>> ,
+
+<<<MATH_TOKEN_0206>>>
+
+<<<MATH_TOKEN_0207>>>
+
+<<<MATH_TOKEN_0208>>>
+
+This approach enables the solution to possess only
+387,414 parameters while still achieving competitive per-
+formance. It can process a 1024x1024 image in just 0.14s
+and a 512x512 image in 0.04s. The rapid speed, coupled
+with low complexity, renders it suitable for various real-
+
+world applications where a balance of performance and
+speed is crucial.
+
+Implementation: The solution, developed in Python with
+the PyTorch framework, was trained on an Intel i7-8700
+CPU <<<MATH_TOKEN_0209>>> 3.20GHz, 16GB RAM, and NVIDIA GeForce RTX
+3070 graphics card. Data provided by the competition was
+exclusively used for training the model. The training dataset
+comprised 230 pairs of images, each sized 2992x2000 pix-
+els. Out of these, 220 images were allocated for training,
+with the remaining 10 reserved for validation. To augment
+the dataset, non-overlapping patches of size 256x256 pix-
+els were extracted from each image and used to train the
+model. Training lasted 70 epochs, employing the Cosine
+Annealing strategy with a cycle length of 10 epochs and an
+initial learning rate set at 0.0005. To train the model Adam
+optimizer, in conjunction with PyTorch’s mixed precision
+feature was used and batch size was set to 8.
+
+![Figure 16.
+Overview of the proposed Multi-scale Feature Fu-
+sionNet (MFNN). The encoder extracts features in three distinct
+scales, with information passed across hierarchies (green dashed
+box). Fine-grained global-local spatial and contextual informa-
+tion is learnt through the GLSC Block (orange dashed box). At
+decoder, information exchange occurs in reverse hierarchies (blue
+dashed box).](figures/figure_16.png)
+
+Description: The proposed MFNN framework includes
+three main modules: the hierarchical spatio-contextual
+(HSC) feature encoder, Global-Local Spatio-Contextual
+(GLSC) block, and hierarchical spatio-contextual (HSC)
+decoder, as shown in Fig. 16. Typically, low-light image en-
+hancement networks employ feature scaling for varying the
+sizes of the receptive fields. The varying receptive fields fa-
+cilitate learning of local-to-global variances in the features.
+With this motivation, we learn contextual information from
+multi-scale features while preserving high resolution spatial
+details. We achieve this via a hierarchical style encoder-
+decoder network with residual blocks as the backbone for
+learning. Given a input image x, the proposed multi-scale
+hierarchical encoder extracts shallow features in three dis-
+tinct scales and is given as:
+
+(18)
+
+where <<<MATH_TOKEN_0210>>> are the <<<MATH_TOKEN_0211>>> features <<<MATH_TOKEN_0212>>> the <<<MATH_TOKEN_0213>>>
+scale from the sampled space of input image <<<MATH_TOKEN_0214>>> and, <<<MATH_TOKEN_0215>>>
+represents the hierarchical encoder at scale s. To learn
+the global-to-local representations from these shallow-level
+features, we propose a Global-Local Spatio-Contextual
+(GLSC) block, with residual blocks as the backbone. The
+learnt deep features are represented as:
+
+<<<MATH_TOKEN_0216>>>
+
+where <<<MATH_TOKEN_0217>>> is the deep feature at the <<<MATH_TOKEN_0218>>> scale, <<<MATH_TOKEN_0219>>> are the
+shallow features extracted at the <<<MATH_TOKEN_0220>>> scale and, <<<MATH_TOKEN_0221>>> rep-
+resents residual blocks at respective scales. We decode the
+deep features obtained at various scales, with the proposed
+hierarchical decoder and is given by:
+
+<<<MATH_TOKEN_0222>>>
+
+![Figure 15. Overall framework our Team ataza’s Frequency Guided Network](figures/figure_15.png)
+
+Figure 15. Overall framework our Team ataza’s Frequency Guided Network
+
+![Figure 16.
+Overview of the proposed Multi-scale Feature Fu-
+sionNet (MFNN). The encoder extracts features in three distinct
+scales, with information passed across hierarchies (green dashed
+box). Fine-grained global-local spatial and contextual informa-
+tion is learnt through the GLSC Block (orange dashed box). At
+decoder, information exchange occurs in reverse hierarchies (blue
+dashed box).](figures/figure_16.png)
+
+Figure 16. Overview of the proposed Multi-scale Feature Fu-
+sionNet (MFNN). The encoder extracts features in three distinct
+scales, with information passed across hierarchies (green dashed
+box). Fine-grained global-local spatial and contextual informa-
+tion is learnt through the GLSC Block (orange dashed box). At
+decoder, information exchange occurs in reverse hierarchies (blue
+dashed box).
+
+where <<<MATH_TOKEN_0223>>> is the decoded feature at the <<<MATH_TOKEN_0224>>> scale, and <<<MATH_TOKEN_0225>>>
+represents the hierarchical decoder. The decoded features
+and upscaled features at each scale are passed to the recon-
+struction layers <<<MATH_TOKEN_0226>>> to obtain the enhanced image <<<MATH_TOKEN_0227>>> The up-
+scaled features from each scale are stacked and represented
+as:
+<<<MATH_TOKEN_0228>>>
+(21)
+where <<<MATH_TOKEN_0229>>> and <<<MATH_TOKEN_0230>>> are decoded features at three dis-
+tinct scales, <<<MATH_TOKEN_0231>>> represents the final set of features passed to
+reconstruction layers to obtain the enhanced image \hat{y:
+
+{y}=M{(P),
+(22)
+
+where <<<MATH_TOKEN_0232>>> is the enhanced image obtained from reconstruction
+layers M{. We optimize the learning of MFNN with the
+proposed <<<MATH_TOKEN_0233>>> and is given as:
+
+<<<MATH_TOKEN_0234>>>
+where <<<MATH_TOKEN_0235>>> and <<<MATH_TOKEN_0236>>> are the weights. We experimentally set
+the weights to <<<MATH_TOKEN_0237>>> and <<<MATH_TOKEN_0238>>> is a
+weighted combination of three distinct losses inspired from
+I25-27, 36l. <<<MATH_TOKEN_0239>>> loss to minimize error at pixel level, per-
+ceptual loss [43] to efficiently restore contextual informa-
+tion between the ground-truth image and the output image,
+multiscale structural dissimilarity loss to restore structural
+
+details. The aim here is to minimize the weighted combina-
+tional loss <<<MATH_TOKEN_0240>>> given as:
+
+where <<<MATH_TOKEN_0241>>> denotes the learnable parameters of the proposed
+framework, <<<MATH_TOKEN_0242>>> is the total number of training pairs, <<<MATH_TOKEN_0243>>> and <<<MATH_TOKEN_0244>>>
+are the input and output image respectively, and <<<MATH_TOKEN_0245>>>
+is proposed framework for low-light image enhancement.
+Implementation: We train the proposed MFNN using
+Python (v3.8) coupled with PyTorch framework and con-
+duct experiments on 2x NVIDIA RTX 3090 GPUs with
+AMD Ryzen ThreadRipper 3960X CPU. We use 16 resid-
+ual blocks split into three layers of the hierarchy, and gener-
+ate 256 feature maps for each scale. We train the proposed
+MFNN on dataset provided in the challenge along with LoL
+Dataset [71] with patches of size 600*400. During train-
+ing, we use Adam optimizer with <<<MATH_TOKEN_0246>>>
+<<<MATH_TOKEN_0247>>> set the learning rate <<<MATH_TOKEN_0248>>>
+train the proposed MFNN for 1000 epochs. We optimize
+the learning with proposed <<<MATH_TOKEN_0249>>> During testing, we
+use full resolution images (2992 <<<MATH_TOKEN_0250>>> 2000), on single RTX
+3090 GPU. Average testing time for single image on full
+resolution is 0.53s on RTX 3090 GPU.
+
+4.17. 221B
+
+![Figure 17. Overview of diffusion model training process with the
+differentiable spatial entropy loss proposed by the team 221B.](figures/figure_17.png)
+
+Figure 17. Overview of diffusion model training process with the
+differentiable spatial entropy loss proposed by the team 221B.
+
+The organizer wants to highlight that this method has ob-
+tained the first place on the LPIPS ranking, with a score of
+0.1084, outperforming the overall best-ranked work with a
+score of 0.1221.
+
+Description: Most existing diffusion-based works [37]
+simply employ <<<MATH_TOKEN_0251>>> loss to train the noise prediction net-
+
+work in a deterministic way, which always produces smooth
+intermediate noises (or states) in the reverse process. Al-
+though the perceptual quality can be improved with longer
+diffusion steps, it is reasonable to explore a perceptual-
+based loss function facilitate the training process. In this
+work, they propose to learn the network from a pure statis-
+tic perspective, that is, directly learning distributions rather
+than pixel-by-pixel distances. The core idea is the differ-
+entiable spatial entropy that drived from the kernel density
+estimation (KDE) and measures the spatial information of
+an image. Formally, following [3, 63], the two-dimensional
+KDE is defined as the probability of a specific intensity
+value <<<MATH_TOKEN_0252>>> and its neighborhood <<<MATH_TOKEN_0253>>> as:
+
+<<<MATH_TOKEN_0254>>>
+<<<MATH_TOKEN_0255>>>
+
+<<<MATH_TOKEN_0256>>>
+
+where <<<MATH_TOKEN_0257>>> and <<<MATH_TOKEN_0258>>> are arbitrary kernel functions (they can
+also be the same). To make use of the differentiable spa-
+tial KDE in image generation, this work considers to in-
+troduce the relative entropy (also called KL-divergence) to
+measure the distribution distance between the predicted im-
+age and ground truth. <<<MATH_TOKEN_0259>>> and <<<MATH_TOKEN_0260>>> represent the ground
+truth’s and prediction’s probability distributions computed
+from Eq. (25), the spatial relative entropy is defined to be

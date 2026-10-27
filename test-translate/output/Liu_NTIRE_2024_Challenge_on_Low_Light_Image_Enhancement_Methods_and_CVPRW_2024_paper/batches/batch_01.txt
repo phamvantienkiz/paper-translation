@@ -1,0 +1,450 @@
+NTIRE 2024 Challenge on Low Light Image Enhancement: Methods and Results
+
+Xiaoning Liu∗
+Zongwei Wu∗
+Ao Li∗
+Florin-Alexandru Vasluianu∗
+Yulun Zhang∗
+Shuhang Gu∗
+Le Zhang∗
+Ce Zhu∗
+Radu Timofte∗
+Zhi Jin
+Hongjun Wu
+Chenxi Wang
+Haitao Ling
+Yuanhao Cai
+Hao Bian
+Yuxin Zheng Jing Lin
+Alan Yuille
+Ben Shao Jin Guo
+Tianli Liu
+Mohao Wu
+Yixu Feng
+Shuo Hou
+Haotian Lin
+Yu Zhu
+Peng Wu
+Wei Dong
+Jinqiu Sun
+Yanning Zhang
+Qingsen Yan
+Wenbin Zou
+Weipeng Yang
+Yunxiang Li <<<MATH_TOKEN_0001>>>
+Qiaomu Wei Tian Ye
+Zhichao Zuo
+Sixiang Chen
+Zhao Zhang
+Suiyi Zhao
+Bo Wang
+Yan Luo
+Mingshen Wang
+Junhu Wang
+Yanyan Wei
+Xiaopeng Sun
+Yu Gao
+Jiancheng Huang <<<MATH_TOKEN_0002>>> Hongming Chen <<<MATH_TOKEN_0003>>>
+Hui Tang
+Yuanbin Chen
+Yuanbo Zhou
+Xinwei Dai
+Xintao Qiu
+Wei Deng
+Qinquan Gao
+Tong Tong
+Mingjia Li
+Jin Hu
+Xinyu He
+Xiaojie Guo
+Sabarinathan
+K Uma
+A Sasithradevi
+B Sathya Bama
+S. Mohamed Mansoor Roomi
+V.Srivatsav
+Jinjuan Wang
+Long Sun <<<MATH_TOKEN_0004>>> Qiuying Chen <<<MATH_TOKEN_0005>>> Jiahong Shao
+Yizhi Zhang
+Marcos V. Conde
+Daniel Feijoo
+Juan C. Benito
+Alvaro Garc´ıa
+Jaeho Lee
+Seongwan Kim
+SharifSMA
+Nodirkhuja Khujaev
+Roman Tsoy
+Ali Murtaza
+Uswah Khairuddin
+Ahmad ’Athif Mohd Faudzi
+Sampada Malagi
+Amogh Joshi
+Nikhil Akalwadi
+Chaitra Desai
+Ramesh Ashok Tabib
+Uma Mudenagudi
+Wenyi Lian
+Wenjing Lian
+Jagadeesh Kalyanshetti
+Vijayalaxmi Ashok Aralikatti
+Palani Yashaswini
+Nitish Upasi
+Dikshit Hegde
+Ujwala Patil
+Sujata C
+Xingzhuo Yan
+Wei Hao
+Minghan Fu
+Pooja choksy
+Anjali Sarvaiya
+Kishor Upla
+Kiran Raja
+Hailong Yan <<<MATH_TOKEN_0006>>> Jingyi Zhang
+Huan Zheng
+
+<<<MATH_TOKEN_0007>>>
+
+This paper reviews the NTIRE 2024 low light image en-
+hancement challenge, highlighting the proposed solutions
+and results. The aim of this challenge is to discover an
+effective network design or solution capable of generating
+brighter, clearer, and visually appealing results when deal-
+ing with a variety of conditions, including ultra-high resolu-
+tion (4K and beyond), non-uniform illumination, backlight-
+ing, extreme darkness, and night scenes. A notable total of
+428 participants registered for the challenge, with 22 teams
+ultimately making valid submissions. This paper meticu-
+lously evaluates the state-of-the-art advancements in en-
+hancing low-light images, reflecting the significant progress
+
+Low light Image enhancement (LLIE), a pivotal yet chal-
+lenging task in computer vision, aims to improve visibility
+and contrast across a broad spectrum of low-light scenar-
+ios, including uneven illumination, extreme darkness, back-
+lighting, and night. Additionally, LLIE strives to correct im-
+perfections like noise, artifacts, and color distortion. These
+challenges, arising in darkness or through illumination en-
+hancement, affect both human visual perception and down-
+stream tasks like object detection and scene segmentation.
+
+∗ X. Liu, Z. Wu, A. Li, F. Vasluianu, Y. Zhang, S. Gu, L. Zhang, C.
+
+As deep learning technology improves by leaps and
+bounds, remarkable advances in LLIE are impressive. How-
+ever, current cutting-edge methods [8, 34, 39, 47, 55, 72, 78]
+not only struggle to adapt to complex and variable low-light
+conditions but also face major challenges when being de-
+ployed on consumer-grade devices such as smartphones and
+
+Zhu and R. Timofte were the challenge organizers, while the other authors
+participated in the challenge. Each team described their own method in the
+report. Appendix A contains the authors’ teams and affiliations.
+NTIRE 2024 webpage: https://cvlai.net/ntire/2024.
+
+Code: https://github.com/AVC2-UESTC/NTIRE24-LLE/
+
+cameras. This is primarily constrained by the limitations of
+current datasets [7, 71] that suffer from limited scene di-
+versity (notably insufficient night scenes), low resolution,
+and overly simplistic lighting conditions. Additionally, the
+high complexity of models [8, 38, 39, 69, 74] hampers their
+ability to handle ultra-high resolution images that are com-
+monly captured by smartphones.
+
+To address the aforementioned challenges, we launched
+the inaugural Low Light Enhancement Challenge at the
+2024 New Trends in Image Restoration and Enhancement
+(NTIRE 2024) workshop. The objective of this challenge
+is to foster innovative thinking and discover solutions that
+significantly improve image quality under various low-light
+conditions. To this end, we have built an LLIE dataset
+that features a wide range of scenes, encompassing vari-
+ous low-light conditions. These images include indoor and
+outdoor locations under both daylight and nighttime condi-
+tions, with the challenge focusing on enhancing image qual-
+ity across these diverse settings.
+
+In conclusion, this challenge aims to set a new bench-
+mark for LLIE while highlighting specific challenges and
+research questions in this domain. We hope that it will
+inspire the research community to explore these press-
+ing issues and identify emerging trends. Moreover, this
+challenge is one of the NTIRE 2024 Workshop associ-
+ated challenges on: dense and non-homogeneous dehaz-
+ing [1], night photography rendering [4], blind compressed
+image enhancement [73], shadow removal [67], efficient
+super resolution [64], image super resolution (×4) [20],
+light field image super-resolution [70], stereo image super-
+resolution [68], HR depth from images of specular and
+transparent surfaces [77], bracketing image restoration and
+enhancement [81], portrait quality assessment [17], qual-
+ity assessment for AI-generated content [48], restore any
+image model (RAIM) in the wild [45], RAW image super-
+resolution [24], short-form UGC video quality assess-
+ment [44], low light enhancement [49], and RAW burst
+alignment and ISP challenge.
+
+The objectives of this challenge are threefold: (1) to ad-
+vance research in the field of low light enhancement, (2) to
+facilitate systematic comparisons among different method-
+ologies, and (3) to provide a forum for both academic and
+industrial stakeholders to interact, deliberate, and poten-
+tially forge partnerships. This section delves into the de-
+tailed aspects of the challenge.
+
+Although some low light datasets, such as LOL [71] and
+MIT-Adobe FiveK [7], have been widely applied in the
+
+field, they exhibit limitations previously mentioned, includ-
+ing limited resolution, monotonous scene content, and uni-
+form illumination levels. These factors often restrict the
+generalization capabilities of cutting-edge models [8, 39,
+47, 55, 72, 78], posing significant challenges in adapting to
+diverse low-light conditions, especially when implemented
+on consumer-grade devices like smartphones and cameras.
+To address these issues, this challenge introduces a rich ar-
+ray of contest scenarios, covering a variety of lighting con-
+ditions such as dim environments, extreme darkness, non-
+uniform illumination, backlighting, and night scenes, appli-
+cable to both indoor and outdoor settings during day and
+night, with image resolutions up to 4K and beyond. Specif-
+ically, the dataset includes 230 training scenes, along with
+35 validation and 35 testing scenes. The ground truth (GT)
+images for both validation and testing were kept concealed
+from the participants throughout the challenge. Further de-
+tails about the dataset will be provided in subsequent works.
+
+Ranking statistic. In this challenge, we primarily use peak
+signal-to-noise ratio (PSNR), structural similarity (SSIM),
+and Learned Perceptual Image Patch Similarity (LPIPS)
+[80] as the criteria for comparing models submitted by par-
+ticipants. Given that LPIPS is a learned perceptual evalua-
+tion metric and our competition focuses mainly on quantita-
+tive assessments, We use LPIPS as a supplementary evalu-
+ation tool when the quantitative evaluations of two methods
+are indistinguishable. As listed in Tab. 1, “Final Rank” rep-
+resents a composite metric, calculated through a weighted
+sum of PSNR (60%) and SSIM (40%). This way offers a
+comprehensive evaluation of the effectiveness of each solu-
+tion in enhancing low-light conditions.
+
+Challenge phases. (1) Development and validation phase:
+Participants were granted access to 230 training image pairs
+and 35 validation inputs from our constructed dataset. It is
+noteworthy that the GT images for the validation set were
+hidden from the participants. Participants had the oppor-
+tunity to submit their enhanced results to the evaluation
+server, which calculated the PSNR and SSIM for the en-
+hanced images generated by their models and provided im-
+mediate feedback. (2) Testing phase: Participants gained
+access to 35 testing low light images from the built dataset,
+with the ground-truth images remaining undisclosed. Sub-
+missions of their enhanced outputs were made to the Co-
+dalab evaluation server, accompanied by an email to the or-
+ganizers containing the code and a factsheet. The organizers
+subsequently verified and executed the provided code to de-
+rive the final results, which were shared with participants
+upon the conclusion of the challenge.
+
+Table 1. Evaluation and Rankings in the NTIRE 2024 Low Light Enhancement Challenge. This table presents a comprehensive compar-
+ison of participant solutions across multiple metrics: PSNR, SSIM, and LPIPS. “Rank PSNR” and “Rank SSIM” indicate the respective
+standings of participants based on their performance in PSNR and SSIM metrics on the challenge’s test dataset. “Final Rank” represents a
+composite metric, derived from a weighted sum of PSNR (60%) and SSIM (40%), which provides an overall assessment of each solution’s
+effectiveness in low light enhancement.
+
+Team
+PSNR
+SSIM
+LPIPS
+Rank PSNR
+Rank SSIM
+Final Rank
+SYSU-FVL-T2
+25.52
+0.8637
+0.1221
+1
+1
+1
+Retinexformer [8]
+25.30
+0.8525
+0.1424
+2
+4
+2
+DH-AISP
+24.97
+0.8528
+0.1235
+3
+3
+3
+6
+2
+4
+NWPU-DiffLight
+24.78
+0.8556
+0.1673
+GiantPandaCV
+24.83
+0.8474
+0.1353
+5
+7
+5
+LVGroup.HFUT
+24.88
+0.8395
+0.1371
+4
+10
+6
+Try ltry8
+24.49
+0.8483
+0.1359
+8
+6
+7
+Pixel warrior
+7
+9
+24.74
+0.8416
+0.1514
+<<<MATH_TOKEN_0008>>>
+HuiT
+24.13
+0.8484
+0.1436
+10
+5
+9
+X-LIME
+24.28
+0.8446
+0.1298
+9
+<<<MATH_TOKEN_0009>>>
+10
+Image Lab
+23.63
+0.8235
+0.1673
+11
+12
+11
+23.28
+0.8385
+0.1406
+12
+dgzzqteam
+11
+12
+Cidaut AI (InstructIR [23])
+23.07
+0.8075
+0.1559
+13
+16
+13
+22.93
+0.8097
+0.1592
+14
+15
+14
+<<<MATH_TOKEN_0010>>>
+ataza
+22.51
+0.8161
+0.1404
+18
+13
+15
+22.85
+0.7828
+0.1823
+15
+18
+16
+KLETech-CEVI.LowlightHypnotise
+221B
+22.04
+0.8141
+0.1084
+19
+14
+17
+22.76
+0.7843
+0.1806
+17
+17
+18
+KLETech-CEVI_Dark Knights
+BFU-LL
+22.78
+0.7792
+0.1826
+16
+19
+19
+SVNIT.NTNU
+<<<MATH_TOKEN_0011>>>
+0.7718
+0.3089
+20
+20
+20
+yanhailong
+<<<MATH_TOKEN_0012>>>
+0.6881
+0.3133
+21
+22
+21
+Mishka
+18.19
+0.7161
+0.2712
+22
+21
+22
+
+The results of the low light enhancement challenge are de-
+tailed in Tab. 1, which evaluates and ranks the performances
+of 22 teams. Notably, one team, AiRiA Vision, voluntar-
+ily withdrew from the ranking due to issues related to their
+model design. The evaluation leverages two key perfor-
+mance metrics: PSNR and SSIM. The metrics are calcu-
+lated based on a test set comprising 35 inputs from the built
+dataset, thereby ensuring the challenge’s integrity and miti-
+gating the risk of overfitting to the validation set.
+
+The top-ranked teams in the challenge boast higher
+PSNR and SSIM values, signifying superior performance,
+while the lower-ranked teams exhibit lower values, in-
+dicative of suboptimal performance. Notably, two teams
+achieved a PSNR of over 25 dB, meeting our prior expec-
+tations for this metric. For more detailed information on
+the low-light enhancement methods employed, please refer
+to Sec. 4, which discusses the specific solutions provided by
+each team.
+
+Due to the ultra-high resolution (4K and beyond) of
+the input images, many teams opted for multi-scale strate-
+gies to implement enhancement. While they has indeed
+reduced computational consumption to some extent, cur-
+rently, almost all models are unable to perform inference
+on a plain GPU, e.g. , one with 12G memory. For the
+next competition, we will consider including NIQE [59]
+
+along with metrics measuring model efficiency, such as in-
+ference time, model parameter count, computational com-
+plexity (FLOPs), and memory consumption. This will pro-
+mote the application of ultra-high-resolution low light en-
+hancement on smartphones.

@@ -1,0 +1,319 @@
+Daniel Feijoo 1† , Juan C. Benito 1 , Alvaro Garcia 1 , Marcos V. Conde 1,2†
+
+1 Cidaut AI, Valladolid, Spain
+
+<<<MATH_TOKEN_0001>>> Computer Vision Lab, University of Wirzburg, Germany
+
+https://github.com/cidautai/DarkIR † Corresponding Authors {danfei,marcos.conde@cidaut.es}
+
+Low-light and Blurry (↓Noise)
+
+RetinexFormer [3] fails with Blur
+
+IR (Ours)
+
+0833
+Low-light and Noisy (↓Blur)
+LEDNet [65] fails with Noise
+DarkIR (Ours)
+
+![Figure 1. Previous Low-light Image Enhancement (LLIE) and restoration methods are not robust to blur and illumination changes. Our
+multi-task model is able to restore real low-light images under varying illumination, noise and blur conditions. Zoom-in to see details.](figures/figure_01.png)
+
+Figure 1. Previous Low-light Image Enhancement (LLIE) and restoration methods are not robust to blur and illumination changes. Our
+multi-task model is able to restore real low-light images under varying illumination, noise and blur conditions. Zoom-in to see details.
+
+Photography during night or in dark conditions typi-
+cally suffers from noise, low-light and blurring issues due
+to the dim environment and the common use of long expo-
+sure. Although Deblurring and Low-light Image Enhance-
+ment (LLIE) are related under these conditions, most ap-
+proaches to image restoration solve these tasks separately.
+In this paper, we present an efficient and robust neural net-
+work for multi-task low-light image restoration. Instead of
+following the current tendency of Transformer-based mod-
+els, we propose new attention mechanisms to enhance the
+receptive field of efficient CNNs. Our method reduces the
+computational costs in terms of parameters and MAC oper-
+ations compared to previous methods. Our model, DarkIR,
+achieves new state-of-the-art results on the popular LOL-
+Blur, LOLv2 and Real-LOLBlur datasets, being able to gen-
+eralize on real-world night and dark images.
+
+During night or low-light conditions, we can define the im-
+age formation process as follows
+
+<<<MATH_TOKEN_0002>>>
+
+where y is the observed dim image, x the unperturbed
+captured scene, k represents the lens (point-spread func-
+tion) PSF blurring kernel, n is the additive sensor noise,
+and <<<MATH_TOKEN_0003>>> is a function to control the dynamic range and pixel
+saturation. We use <<<MATH_TOKEN_0004>>> to represent the convolution operator.
+
+In comparison with daytime conditions, at low-light, the
+noise (shot and read) is substantially higher. During night
+photography, cameras usually use long exposure (slow shut-
+ter speed) to allow more available light to illuminate the
+image. However, long exposure could lead to ghosting and
+blurring artifacts. These image degradations are more no-
+table on smartphones, since these have a fixed aperture and
+limited optics. For these reasons, joint low-light enhance-
+
+ment and deblurring is paramount for mobile computational
+photography [12, 65] — see Figure 1 samples.
+
+Under any circumstances, the captured image will
+present certain levels of noise and blur [13]. Using a tripod
+to capture steady images, we can notably reduce the blur.
+Moreover, if we use proper illumination, noise can also be
+reduced [1, 20].
+
+However, nowadays most photographs are captured us-
+ing (handheld) smartphones. Due to the limited sensor size
+and optics, these employ more complex Image Signal Pro-
+cessors (ISPs) [10, 12] in comparison to DSLM (Digital
+Single-Lens Mirrorless) cameras. Smartphone photogra-
+phy is still far from DSLM quality standards, however, re-
+cent research in low-level computer vision and computa-
+tional photography allows to close the gap. Low-light im-
+age enhancement (LLIE) [3, 14, 30, 31, 45, 64], image de-
+blurring [21, 25, 38, 40] and night photography enhance-
+ment [42, 65] are popular tasks.
+
+For instance, avoiding the presence of blur due to hand
+tremor (hand shaking) has been well-studied, even in low-
+light scenarios [29, 62]. However, in most cases, these tasks
+are solved individually, thus, the state-of-the-art methods
+for image deblurring do not generalize to nighttime images,
+and the best methods for low-light enhancement cannot re-
+duce the notable blur. This presents a clear limitation, since
+multiple task-specific models need to be fine-tuned, stored
+and applied in sequence, which limits their applications in
+real-world cases.
+
+To the best of our knowledge, very few works aim to
+solve these tasks (denoising, deblurring and LLIE) in a
+jointly end-to-end manner [6, 33, 63, 65], being LED-
+Net [65] the most notable work. We focus on this research
+direction since exploiting the correlation between the degra-
+dations allows us to achieve the best performance in terms
+of image reconstruction, usability and efficiency.
+
+Our contribution We propose a convolutional neural net-
+work (CNN) that operates in both the spatial and frequency
+domains. In the spatial domain, we focus on solving the
+noise n and the non-uniform blur k, we achieve this by us-
+ing large receptive field spatial attention. On the other hand,
+in the Fourier domain, we are able to enhance the low-light
+conditions easily [28, 44], due to the global nature of the
+task. We can summarize our contributions as:
+
+1. We design a lightweight neural network with frequency
+attention, and large receptive field attention, combining
+spatial and frequency information.
+2. Our model, DarkIR, achieves state-of-the-art results on
+the popular LOLBlur and Real-LOLBlur datasets [65],
+improving +1dB in PSNR over LEDNet [65], while hav-
+ing less computational cost.
+3. DarkIR represents a new baseline for multi-task
+night/dark image enhancement.
+
+Image Deblurring We can see decades of research on re-
+constructing sharp scenes. Reducing the blur in an image is
+divided into blind and non-blind methods. While the non-
+blind methods consider the blurring kernel k (or PSF) to
+process the image, the blind methods do not have any prior
+knowledge about the blur degradation.
+
+In recent years, multiple deep learning-based approaches
+have been proposed for blind and non-blind deblurring [25,
+38], surpassing traditional methods in both scenarios. The
+non-blind approaches offer a great solution, considering
+that only blurry-sharp image pairs are required for training
+such models, and we do not require PSF estimation or any
+information about the sensor. Most of these approaches are
+sensor-agnostic i.e., they can enhance sRGB images cap-
+tured from different cameras.
+
+Nowadays, a big part of these methods are based on con-
+volutional neural networks (CNNs) [4, 25, 37, 57]. In De-
+blurGAN [25], the authors use Generative Adversarial Net-
+works (GANs) to solve this problem. More recently, the
+authors of [24] implemented an efficient frequency domain
+based transformer for deblurring. We also find iterative
+methods and diffusion models [33, 49].
+
+Low-Light Image Enhancement (LLIE) The first
+methods used to consider image statistics or prior informa-
+tion [2, 18], being most of them based on the well-known
+Retinex Theory [26].
+
+Following the deep learning tendency, nowadays LLIE
+methods are based on Convolutional Neural Networks
+(CNNs) such as RetinexNet [48] (and the corresponding
+LOL dataset), ZeroDCE [16] and SCI [35]. Recent meth-
+ods explore the power of transformers in this task, such as
+in the case of RetinexFormer [3], or use Fourier frequency
+information to enhance the amplitude of the image, like in
+FourLLIE [44].
+
+Low-Light Blur Enhancement. Even though image de-
+blurring and low-light enhancement are tasks that capture
+great attention, solving both tasks at the same time is a
+challenging task, and very few works in the literature tackle
+it [6, 33, 63, 65]. NBDN [6] proposes a non-blind network
+to enhance night saturated images. When deconvolving the
+image to its sharp version, the presence of noise or saturated
+regions needs to be kept in mind by the algorithm. With this
+work, the authors proved that previous methods had issues
+in solving this specific task.
+
+On the other hand, with LEDNet [65], the authors try
+to solve the problem of low-light enhancement considering
+that the images are also blurry. This is a realistic assump-
+tion, since smartphones need long exposure times for low-
+light environments. They developed an encoder-decoder
+network to solve this problem and introduced the popular
+LOLBlur and Real-LOLBlur datasets.
+
+LOL Stage
+Deblur Stage
+Upsampling
+<<<MATH_TOKEN_0005>>>
+DBlock
+3x3 DW, dilation 1
+e
+ffl
+1x1 conv
+P-Shu
+EBlock
+3x3 DW, dilation 4
+pling
+Conv 3x3
+3x3 DW, dilation 9
+W] [2C,H/2,W
+Element-wis
+Element-wise
+product
+plin
+psampling
+EBlock
+DBlock
+1x1conv
+LReLU
+1x1conv
+conv conv
+LNorm
+3x3 conv
+1x1 conv
+3x3 conv
+SG
+SCA
+1x1 conv
+LNorm
+FFT
+ModulePhase
+IFFT
+LNorm
+1x1 conv
+3x3 conv
+SG
+SCA
+1x1 conv
+LNorm
+1x1 conv
+SG
+1x1 conv
+conv
+re-MLP
+SpAM
+
+![Figure 2. General diagram of DarkIR. The neural network follows an encoder-decoder architecture. We use different blocks for encoding
+and decoding that follow the Metaformer structure [56]. The encoder focuses on the low-light illumination issues using Fourier information.
+Thus, the encoder produces a low-resolution reconstructed image ˆx↓8 with corrected illumination. The decoder focuses on upscaling and
+reducing the blur using the prior illumination-enhanced encoded features. To achieve this, the decoder uses large receptive field spatial
+attention. This design allows our lightweight model to have less parameters and FLOPs than previous methods.](figures/figure_02.png)
+
+Figure 2. General diagram of DarkIR. The neural network follows an encoder-decoder architecture. We use different blocks for encoding
+and decoding that follow the Metaformer structure [56]. The encoder focuses on the low-light illumination issues using Fourier information.
+Thus, the encoder produces a low-resolution reconstructed image xˆ↓8 with corrected illumination. The decoder focuses on upscaling and
+reducing the blur using the prior illumination-enhanced encoded features. To achieve this, the decoder uses large receptive field spatial
+attention. This design allows our lightweight model to have less parameters and FLOPs than previous methods.
+
+We follow Metaformer [56] to design our neural network.
+This design simplifies transformer-based architectures into
+simple blocks with 2 components: global attention (e.g., to-
+ken mixer), and a feed-forward network (FFN, MLP). The
+typical formulation for these blocks is:
+
+<<<MATH_TOKEN_0006>>>
+<<<MATH_TOKEN_0007>>>
+<<<MATH_TOKEN_0008>>>
+
+where <<<MATH_TOKEN_0009>>> are the input features and <<<MATH_TOKEN_0010>>> the output features
+of the block. Most popular image restoration models, such
+as NAFNet [7], use the same structure and adapt the Atten-
+tion module to different tasks.
+
+We improve the metaformer structure by developing
+LLIE and deblurring specific blocks. Furthermore, we use
+simple gates (SG) and simplified channel attention (SCA)
+instead of activations as [7].
+
+Low-light Enhancement can be solved efficiently in the
+frequency domain.
+
+Many works [28, 44] proved that the low-light conditions
+are highly correlated with the amplitude of the image in the
+Fourier domain. Thus, by enhancing just the amplitude of
+an image (without touching the phase), we can substantially
+correct the illumination of the image. Moreover, this prop-
+erty stands at different resolutions [28]. Therefore, we can
+estimate an illumination-enhanced image at low-resolution
+and upscale it.
+
+Sharpening and Reducing Blur usually require large re-
+ceptive fields, this could be achieved by extracting deep
+features while downsampling the image – NAFNet’s ap-
+proach [7].
+An alternative would be to use large ker-
+nels [32], however, this could lead to more computational
+complexity and memory requirements.
+
+DarkIR Model In Figure 2, we illustrate our model. Un-
+like most previous methods, we use two different blocks for
+(3) the encoder and decoder. The idea behind this asymme-
+try is to perform low-light enhancement at low-resolution
+in the encoder, and reduce the blur in the decoder, follow-
+ing a similar strategy as LEDNet [65]. The decoder will
+use illumination-enhanced features from the encoder, and
+shall focus on upsampling and improving the sharpness of
+the already enhanced low-resolution reconstruction <<<MATH_TOKEN_0011>>>
+
+For the encoder block, and to restore the low-light con-
+ditions, we work in the Fourier domain [28, 44]. The de-
+coding block focuses on the spatial domain by incorporat-
+ing dilated convolutions with large receptive field. By us-
+ing task-specific blocks, we are able to use fewer blocks.
+This design allows to reduce notably the number of param-
+eters and computational cost in terms of MACs (Multiply-
+Accumulate Operations) and FLOPs (Floating-point Oper-
+ations per second).
+
+How can we make sure the Encoder is performing low-
+light enhancement? As shown in Figure 2, the encoded
+features are linearly combined using a convolutional layer
+to produce an intermediate image representation <<<MATH_TOKEN_0012>>>
+will use this to regularize our model using an additional
+loss function. By producing a good low-resolution repre-
+
+sentation, we can ensure that the amplitude in the Fourier
+domain has been properly enhanced.
+
+We design the encoder blocks (EBlock) to enhance the low-
+light conditions of the image using Fourier information, and
+following the Metaformer [56] (and NAFBlock [7]) struc-
+ture. The block has two components: the spatial atten-
+tion module (SpAM) and a feed-forward network in the fre-
+quency domain (FreMLP).

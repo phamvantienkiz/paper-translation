@@ -1,0 +1,160 @@
+4. Challenge Methods and Teams
+4.1. SYSU-FVL-T2
+
+f)
+
+1
+
+![Figure 1. The backbone network employed in our method. (Re-
+produced from ESDNet [75])](figures/figure_01.png)
+
+Figure 1. The backbone network employed in our method. (Re-
+produced from ESDNet [75])
+
+Description: As shown in Fig. 1, ESDNet-L [75] is em-
+ployed as the backbone in our proposed method for low-
+light image enhancement. The backbone mainly consists
+of an encoder-decoder network in three feature scales with
+skip-connections. Different scales of features are gener-
+ated by adopting the bilinear interpolation. In each scale,
+the Semantic-Aligned Scale-Aware Modules (SAM) are
+
+stacked to enhance the ability of the model to address scale
+variations. SAM incorporates a pyramid context extraction
+module and a cross-scale dynamic fusion module to selec-
+tively fuse multi-scale features.
+
+Furthermore, for network training, the loss function
+<<<MATH_TOKEN_0013>>> is set for outputs in three scales <<<MATH_TOKEN_0014>>>
+
+Ltotal = - i=1 3 LC  Ii, ˆIi  + λ · LP  Ii, ˆIi  , (1)
+where <<<MATH_TOKEN_0015>>> is set as <<<MATH_TOKEN_0016>>> stands for ground truth image,
+<<<MATH_TOKEN_0017>>> stands for enhanced image, <<<MATH_TOKEN_0018>>> stands for Charbonnier
+loss <<<MATH_TOKEN_0019>>> and <<<MATH_TOKEN_0020>>> stands for perceptual loss using pretrained
+VGG19 model [66].
+
+Implementation: The proposed method is based on Python
+3.8 and the experiment is conducted on one NVIDIA RTX
+A6000 GPU (49G). Inspired by MIRNet-v2 [79], we adopt
+a progressive training strategy. The model is trained for
+150000 iterations from scratch and optimized by Adam
+[41]. During the training process, at the first stage, the
+batch size is set to 8, and we randomly crop square image
+patches of size 720 for training. Subsequently, after 46000,
+32000, 24000, 18000, and 18000 iterations, the batch size
+decreases to 4, 4, 2, 2, and 1, respectively. The lengths of
+the square image patches are set to 1024, 1024, 1280, 1280,
+and 1600 for the respective stages. The learning rate is set
+as <<<MATH_TOKEN_0021>>> initially and is scheduled by cyclic cosine an-
+nealing [52]. During the testing phase, the whole low-light
+image is fed into the network, and the enhanced image is
+obtained directly. The batchsize in testing is set as 1.
+
+where  denotes the element-wise multiplication. How-
+ever, this corruption-free assumption is consistent with the
+real under-exposed scenes, where corruptions are inevitably
+introduced by the high-ISO and long-exposure imaging set-
+
+tings, as well as the light-up process. To model the corrup-
+tions, they introduce perturbation terms for R and L and
+reformulate Eq. (2) as:
+
+<<<MATH_TOKEN_0022>>>
+
+= R  L + R  Lˆ + Rˆ  (L + Lˆ). (3)
+
+<<<MATH_TOKEN_0023>>> and <<<MATH_TOKEN_0024>>> are the perturbations. To
+light <<<MATH_TOKEN_0025>>> they multiply two sides of Eq. (3) by a light-up
+map <<<MATH_TOKEN_0026>>> such that <<<MATH_TOKEN_0027>>> as:
+<<<MATH_TOKEN_0028>>>
+
+They then simplify Eq. (4) as
+Ilu = I  L¯ = R + C,
+(5)
+where <<<MATH_TOKEN_0029>>> denotes the lit-up image and <<<MATH_TOKEN_0030>>>
+<<<MATH_TOKEN_0031>>> indicates <<<MATH_TOKEN_0032>>>
+quently, they formulate their ORF as:
+
+<<<MATH_TOKEN_0033>>>
+where <<<MATH_TOKEN_0034>>> denotes the illumination estimator and <<<MATH_TOKEN_0035>>> repre-
+sents the corruption restorer. <<<MATH_TOKEN_0036>>> takes <<<MATH_TOKEN_0037>>> and its illumina-
+tion prior map <<<MATH_TOKEN_0038>>> as inputs. <<<MATH_TOKEN_0039>>>
+where meanc calculates the average pixel values across
+channels. <<<MATH_TOKEN_0040>>> outputs the lit-up image <<<MATH_TOKEN_0041>>> and light-up fea-
+ture Flu ∈ RH×W×C . Then Ilu and Flu are fed into R
+to restore the corruptions and produce the enhanced image
+<<<MATH_TOKEN_0042>>>
+Illumination Estimator. <<<MATH_TOKEN_0043>>> The architecture of <<<MATH_TOKEN_0044>>> is shown
+in Fig. 2 (a) (i). E firstly uses a conv1×1 (convolution with
+kernel size <<<MATH_TOKEN_0045>>> 1) to fuse the concatenation of <<<MATH_TOKEN_0046>>> and <<<MATH_TOKEN_0047>>> The
+well-exposed regions can provide semantic contextual in-
+formation for under-exposed regions. Thus, a depth-wise
+separable conv9×9 is adopted to model the interactions of
+regions with different lighting conditions to generate the
+light-up feature <<<MATH_TOKEN_0048>>> Then <<<MATH_TOKEN_0049>>> uses a <<<MATH_TOKEN_0050>>> to aggregate
+<<<MATH_TOKEN_0051>>> to produce the light-up map <<<MATH_TOKEN_0052>>> which is
+used to light up I in Eq. (4).
+
+Illumination-Guided Transformer. As illustrated in Fig. 2
+(a) (ii), IGT adopts a three-scale U-shaped architecture [10,
+13–16]. The input of IGT is the lit-up image Ilu. In the
+downsampling branch, <<<MATH_TOKEN_0053>>> undergoes a <<<MATH_TOKEN_0054>>> an IGAB,
+a strided conv4×4, two IGABs, and a strided conv4×4 to
+generate hierarchical features <<<MATH_TOKEN_0055>>> where <<<MATH_TOKEN_0056>>>
+= 0, 1, 2. Then F2 passes through two IGABs. Sub-
+(2) sequently, a symmetrical structure is designed as the up-
+sampling branch. Skip connections are used to alleviate
+the information loss caused by the downsampling branch.
+The upsampling branch outputs a residual image Ire ∈
+<<<MATH_TOKEN_0057>>> Then the enhanced image <<<MATH_TOKEN_0058>>> is derived by the
+sum of <<<MATH_TOKEN_0059>>> and <<<MATH_TOKEN_0060>>>
+
+(a) Retinexformer
+
+(i) Illumination Estimator
+(b) Illumination-Guided Attention Bl
+ock
+
+(c) Illumination-Guided Multi-head Self-Attention
+
+(ii) Corruption Restorer – Illumination-Guided Transformer
+
+as mults he
+
+![Figure 2. The overview of Retinexformer [8]. (a) Retinexformer adopts the proposed ORF that consists of an illumination estimator (i) and
+a corruption restorer (ii) IGT. (b) The basic unit of IGT is IGAB, which is composed of two layer normalization (LN), an IG-MSA and a
+feed-forward network (FFN). (c) IG-MSA uses the illumination representations captured by ORF to direct the computation of self-attention.](figures/figure_02.png)
+
+Figure 2. The overview of Retinexformer [8]. (a) Retinexformer adopts the proposed ORF that consists of an illumination estimator (i) and
+a corruption restorer (ii) IGT. (b) The basic unit of IGT is IGAB, which is composed of two layer normalization (LN), an IG-MSA and a
+feed-forward network (FFN). (c) IG-MSA uses the illumination representations captured by ORF to direct the computation of self-attention.
+
+IG-MSA. As illustrated in Fig. 2 (c), the light-up feature
+<<<MATH_TOKEN_0061>>> estimated by <<<MATH_TOKEN_0062>>> is fed into each IG-MSA
+of IGT. Firstly, the input feature is reshaped into tokens <<<MATH_TOKEN_0063>>>
+<<<MATH_TOKEN_0064>>> and split into <<<MATH_TOKEN_0065>>> heads:
+
+<<<MATH_TOKEN_0066>>>
+
+(7)
+where <<<MATH_TOKEN_0067>>> and <<<MATH_TOKEN_0068>>> Then
+<<<MATH_TOKEN_0069>>> is linearly projected into <<<MATH_TOKEN_0070>>> and <<<MATH_TOKEN_0071>>>
+<<<MATH_TOKEN_0072>>>
+
+where <<<MATH_TOKEN_0073>>> and <<<MATH_TOKEN_0074>>> are learnable pa-
+rameters and T denotes the matrix transpose. Subsequently,
+they use the light-up feature <<<MATH_TOKEN_0075>>> encoding illumination in-
+formation and interactions of regions with different lighting
+conditions to direct the computation of self-attention. They
+reshape <<<MATH_TOKEN_0076>>> into <<<MATH_TOKEN_0077>>> and split it into <<<MATH_TOKEN_0078>>> heads:
+
+<<<MATH_TOKEN_0079>>>
+where <<<MATH_TOKEN_0080>>> Then self-attention
+is formulated as:
+
+a learnable positional encoding <<<MATH_TOKEN_0081>>> to produce
+the output tokens <<<MATH_TOKEN_0082>>> Finally, they reshape
+<<<MATH_TOKEN_0083>>> to derive output feature <<<MATH_TOKEN_0084>>>
+
+where <<<MATH_TOKEN_0085>>> is learnable parameter. <<<MATH_TOKEN_0086>>> Subsequently, <<<MATH_TOKEN_0087>>>
+heads are concatenated to pass through an <<<MATH_TOKEN_0088>>> layer and plus

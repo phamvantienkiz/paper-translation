@@ -1,0 +1,412 @@
+RetinexNet
+FIDE
+DRBN
+KinD
+STAR
+[47]
+[51]
+[54]
+[61]
+[50]
+PSNR ↑
+15.906
+17.669
+16.149
+16.472
+14.608
+SSIM ↑
+0.3725
+0.5485
+0.5422
+0.4929
+0.5039
+EnGAN
+ZDCE
+RUAS
+SCI
+DarkIR-mt
+[22]
+[30]
+[16]
+[35]
+(Ours)
+PSNR ↑
+16.311
+15.834
+14.437
+15.017
+18.93
+0.4664
+0.4276
+0.4846
+0.583
+SSIM ↑
+0.4697
+
+assessment metrics. We present results in other real-world
+(unpaired) LLIE datasets in the appendix.
+
+Evaluation Metrics.
+We employ recent image qual-
+ity assessment methods: MUSIQ [23], NRQM [34] and
+NIQE [36] as our perceptual metrics. Following previ-
+ous works, we choose the MUSIQ model trained on the
+KonIQ-10k dataset, which focuses more on color contrast
+and sharpness assessment <<<MATH_TOKEN_0068>>> quite suitable for our task. We
+use the pyiqa 1 implementation of these metrics.
+
+Quantitative Evaluations.
+
+As shown in Table 5, the
+proposed DarkIR achieves competitive perceptual quality
+scores in terms of the three perceptual metrics, indicating
+that our method performs in tune with human perception.
+
+Input
+KinD
+
+DRBN
+
+EnGAN
+DarkIR-m
+
+Ground Truth
+
+![Figure 5. Qualitative results on the real-world dataset LSRW-Huawei [19]. We provide more samples in the supplementary.](figures/figure_05.png)
+
+Figure 5. Qualitative results on the real-world dataset LSRW-Huawei [19]. We provide more samples in the supplementary.
+
+![Figure 6. Qualitative results compared with state of the art method RetinexFormer [3] on LOLv2-Real.](figures/figure_06.png)
+
+Input
+RetinexFormer [3]
+Figure 6. Qualitative results compared with state of the art method RetinexFormer [3] on LOLv2-Real.
+
+Table 4. Results on LOLv2-Real [55] and LOLv2-Synthetic [55].
+Our multi-task model (DarkIR-mt) obtains new SOTA results by
+leveraging all-in-one training, and including low-light deblurring,
+which proves the efficacy of the architecture. Table based on [3,
+44l. MACs were calculated on <<<MATH_TOKEN_0069>>> inputs.
+
+DarkIR-m
+Ground Truth
+
+Complexity
+LOLv2-Real
+LOLv2-Syn
+etos MACs (G)↓ Params (M)↓
+PSNR ↑ SSIM ↑
+PSNR ↑
+SSIM ↑
+UFormer [46]
+12.00
+5.29
+18.82
+<<<MATH_TOKEN_0070>>>
+19.66
+0.871
+RetinexNet [47]
+587.47
+0.84
+15.47
+<<<MATH_TOKEN_0071>>>
+17.13
+0.798
+EnGAN [22]
+61.01
+114.35
+18.23
+0.617
+16.57
+0.734
+RUAS [30]
+0.83
+0.003
+18.37
+0.723
+16.55
+0.652
+FIDE [51]
+28.51
+<<<MATH_TOKEN_0072>>>
+16.85
+0.678
+15.20
+0.612
+48.61
+5.27
+20.29
+0.831
+23.22
+0.927
+DRBN [54]
+KinD [61]
+34.99
+8.02
+14.74
+0.641
+13.29
+<<<MATH_TOKEN_0073>>>
+Restormer [57]
+144.25
+26.13
+19.94
+0.827
+21.41
+0.830
+21.94
+MIRNet [58]
+785
+31.76
+<<<MATH_TOKEN_0074>>>
+<<<MATH_TOKEN_0075>>>
+<<<MATH_TOKEN_0076>>>
+SNR-Net [52]
+26.35
+4.01
+21.48
+0.849
+24.14
+0.928
+FourLLIE [44]
+5.8
+0.120
+21.60
+0.847
+24.17
+0.917
+Retinexformer [3]
+15.57
+<<<MATH_TOKEN_0077>>>
+22.80
+0.840
+25.67
+0.930
+DarkIR-mt (Ours)
+7.25
+<<<MATH_TOKEN_0078>>>
+23.87
+0.880
+25.54
+0.934
+
+Table 5. Perceptual quality metrics on Real-LOLBlur [65].
+
+RUAS
+MIMO
+RetinexFormer NAFNet LEDNet Restormer DarkIR-m DarkIR-l
+→ MIMO → Zero-DCE
+MUSIQ↑
+34.39
+28.36
+45.30
+50.22
+39.11
+46.6
+48.36
+48.79
+NRQM↑
+3.322
+3.697
+5.281
+4.940
+5.643
+4.627
+4.983
+4.917
+NIQE↓
+6.812
+6.892
+4.576
+5.123
+4.764
+5.268
+4.998
+5.051
+
+sor noise, saturated pixels and low illumination.
+
+Qualitative Evaluations. Figure 7 presents visual com-
+parisons on real-world night blurry image from Real-
+LOLBlur [65]. These samples showcase the robustness of
+our approach in real cases with handheld motion blur, sen-
+
+In addition to our results, we include three ablation studies
+on model design and training.
+
+In Table 6 we compare results obtained using differ-
+ent block configurations, such as NAFBlock, EBlock or
+DBlock. The description states which changes are applied
+to the network, and everything else is kept exactly as in
+the proposed model. We can clearly see how our model
+achieves the best results. Unlike the final proposed model,
+all the models in this study were trained using crops of
+256px instead of 384px, which explains the lower results in
+general. We also studied the decoder block spatial attention
+in Table 7, where the well-known Large Kernel Attention
+(LKA) mechanism is compared with our Dilated-spatial At-
+tention Module (Di-SpAM). Our approach performs better
+and requires less parameters and operations.
+
+In Table 8 we also explore the scalability of our model
+by changing its channel embedding. As expected, by in-
+creasing the embedding size, the performance raises. In as-
+cending order of parameters, we have channel embeddings
+of 16, 32, and 64. We find the best efficiency/performance
+balance in the 32 channels embedding (DarkIR-m).
+
+In the supplementary material, we present additional
+studies on the development of the architecture.
+
+Input
+LEDNet
+Retinexformer
+Nafnet
+Restormer
+Ours-m
+Ours-l
+
+![Figure 7. Qualitative comparison on real night scenes from the RealBlurLOL dataset. (Zoom in for best view).](figures/figure_07.png)
+
+Figure 7. Qualitative comparison on real night scenes from the RealBlurLOL dataset. (Zoom in for best view).
+
+Table 6. Network blocks ablation study. Combination of EBlocks
+
+and DBlocks achieves the best performance.
+
+Params↓ (M) MACs↓ (G) PSNR↑ SSIM↑ LPIPS↓
+EBlock is NAFBlock
+3.12
+7.69
+26.51
+0.8764
+0.169
+EBlock has also Phase Transform
+<<<MATH_TOKEN_0079>>>
+8.38
+26.30
+0.871
+0.179
+All DBlock
+3.2
+8.19
+26.68
+0.876
+<<<MATH_TOKEN_0080>>>
+All EBlock
+3.44
+6.46
+26.17
+0.863
+0.187
+All NAFBlock [7]
+3.04
+7.29
+26.24
+0.868
+0.178
+DBlock is NAFBlock
+3.24
+6.84
+26.23
+0.864
+0.185
+3.27
+6.99
+26.63
+0.875
+0.174
+DBlock w/o Extra Depthwise
+DarkIR-m
+3.31
+7.25
+26.90
+0.874
+0.175
+
+Table 7. Spatial Attention ablation study. We compare LKA (large
+
+kernel attention) [17] with our proposed Di-SpAM for the decoder
+blocks. MACs were calculated considering an input of 256px.
+
+Params↓ (M) MACs↓ (G) PSNR↑ SSIM↑ LPIPS↓
+
+LKA [17]
+4.06
+9.14
+26.45 0.876
+0.172
+Di-SpAM (DarkIR-m)
+3.31
+7.25
+27.00 0.883
+0.162
+
+Table 8. Ablation study scaling the channel depth dimensions.
+We can appreciate how our model scales properly, which allows
+adaptation depending on memory or runtime requirements.
+
+Params↓ (M) MACs↓ (G) PSNR↑ SSIM↑ LPIPS↓
+DarkIR-s (16)
+0.872
+2.04
+26.15 0.857 0.206
+7.25
+27.00 0.883 0.162
+DarkIR-m (32)
+3.31
+DarkIR-l (64)
+12.96
+27.19
+27.30 0.898 0.137
+
+Using EBlock and DBlock we are able to greatly reduce
+the number of parameters of the network, getting an out-
+standing 55% less parameters than LEDNet [65] (previ-
+ous state-of-the-art) and <<<MATH_TOKEN_0081>>> less than Restormer <<<MATH_TOKEN_0082>>> (sec-
+ond best method). This reduction is also accompanied by
+a reduction in the number of operations needed to enhance
+the input image. Considering an image of 256px -as previ-
+ous works [7]-, LEDNet uses 33.74 GMACs and Restormer
+141.24 GMACs, while DarkIR only uses 7.25 GMACs –
+
+note that 1 MAC is roughly 2 FLOPs. This means a re-
+duction of 4× the number of operations with the previous
+state-of-the-art method and almost 20× to the second best
+one.
+
+Therefore, DarkIR, while being state-of-the-art in low-
+light deblurring, is also lighter in all aspects, representing
+an advancement towards deploying this kind of models on
+devices with low computational power.
+
+Although we are able to reduce the computational require-
+ments of the target device for running our model, we have
+done this by using depth-wise convolutions, which are not
+necessarily optimal in certain GPU architectures, as they
+lack of arithmetic intensity [15]. Due to this, the model’s in-
+ference times are not drastically and proportionally reduced
+with the reduction in operations. In future work, we will
+propose new methods that can combine low computational
+requirements with notably faster inference times.
+
+We propose a robust model for multi-task low-light en-
+hancement and restoration. Our model, DarkIR, is an ef-
+ficient and robust neural network that performs denoising,
+deblurring and low-light enhancement on dark and night
+scenes. DarkIR achieves new state-of-the-art results on the
+popular LOLBlur, LOLv2 and Real-LOLBlur datasets, be-
+ing able to generalize on real-world night blurry images
+while being more efficient than previous methods.
+
+Acknowledgements This work was supported by Span-
+ish funds through Regional Funding Agency Institute for
+Business Competitiveness of Castile Leon (MACS.2 project
+“Investigacion en tecnolog ´
+´ıas del ambito de la movili- ´
+dad autonoma, conectada, segura y sostenible”). The au- ´
+thors thank Supercomputing of Castile and Leon (SCAYLE.
+Leon, Spain) for assistance with the model training and
+GPU resources.
+
+Transactions on Image Processing, 30:2072–2086, 2021. 5,

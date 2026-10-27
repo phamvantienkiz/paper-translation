@@ -1,0 +1,280 @@
+Implementation: The code is implemented based on the
+Pytorch framework, We trained the model in 300 epochs on
+two NVIDIA 4090 GPU with batchsize of 24. The model
+are optimized by the Adam with <<<MATH_TOKEN_0173>>> and <<<MATH_TOKEN_0174>>>
+with weight decay 1e-8 by default. The initial learning rate
+was set to 2e-4, and true cosine annealing was chosen as the
+learning scheme. The loss function is defined as:
+
+Norm
+3
+Height Axis Multi-
+head Attention
+Width Axis Multi-
+Width Axis Multi-head Attention
+head Attention
+
+<<<MATH_TOKEN_0175>>>
+
+where <<<MATH_TOKEN_0176>>> represents the L1 Loss, and <<<MATH_TOKEN_0177>>> signifies the
+
+Norm
+* Reshape
+FFN
+• Sum
+8
+Matrix Multiplication
+Axis-Transformer Block
+
+![Figure 10. Illustration of the proposed Axis-Transformer Block.](figures/figure_10.png)
+
+Figure 10. Illustration of the proposed Axis-Transformer Block.
+
+& Matrix Multiplication
+® Element-wise Sum
+Correlation
+ttention Matrix
+Convolution
+Depth-wise Convolution
+
+Input future
+Output future
+Cross-Attention Fusion Block
+
+![Figure 11. Illustration of the proposed Cross-Attention Fusion
+Block.](figures/figure_11.png)
+
+Figure 11. Illustration of the proposed Cross-Attention Fusion
+Block.
+
+SSIM Loss. The parameter λ denotes the loss weight used
+to balance the influence between the two terms. In our ex-
+periments λ is set to 1.0.
+
+To save computational resources, high-definition images
+need to be chunked, however, the size of the patches has a
+great impact on the results. Experiments have shown that
+the best results will be achieved by segmenting the origi-
+nal image of size <<<MATH_TOKEN_0178>>> into multiple patches of size
+<<<MATH_TOKEN_0179>>> and by segmenting the original image of size
+<<<MATH_TOKEN_0180>>> into patches of size 800 <<<MATH_TOKEN_0181>>> 1200. <<<MATH_TOKEN_0182>>> ran-
+domly cropped <<<MATH_TOKEN_0183>>> smaller patches from the pro-
+cessed images during the network training process. Follow-
+ing the data augmentation techniques outlined in the LL-
+Former [69] methodology, we applied random horizontal
+and vertical flips to these patches.
+
+Description: Our method consists of two modules, which
+(14) are the curve estimation network for lightness adaption
+and the denoising network for denoising. Specifically, we
+adopt Zero-DCE [34] as a lightness adaption network and
+
+NAFNet [19] as a denoising network. For better light-
+ness adaption performance, we adjust the relevant loss func-
+tion. Specifically, we add MSELoss to the original Zero-
+DCE [35] loss and train for 10 epochs on the provided
+dataset. In the training phase, we use Zero-DCE pre-trained
+weights provided in the official Github repository and fine-
+tune the provided dataset for the first stage. For the sec-
+ond stage, we used NAFNet [19] pre-trained on the SIDD
+dataset and fine-tuned the output of the lightness module. In
+the testing phase, we first use the lightness adaption module
+to adapt the lightness, thus increasing the contrast in the im-
+age. Then we feed the output of the lightness module into
+the denoising module to further mitigate the noise.
+
+Implementation: Our proposed method is implemented in
+Python with the help of the PyTorch framework. The mod-
+els used in the two stages are optimized with Adam. In the
+first stage, the learning rate is set to 1e-4 and in the sec-
+ond stage, the learning rate is set to 5e-5, respectively. In
+the first stage, we adapt the RTX4090 GPU while the A100
+80G is used in the second stage. The convergence speed
+of the first stage is rather fast, so we only train 10 epochs
+on the training set with the full image as input, resulting
+in a 30-minute training. For the second stage, we train the
+NAFNet [19] with a progressively enlarged patch strategy.
+The first 30000 iterations are trained with 512×512 patches,
+then we enlarge the training patch to <<<MATH_TOKEN_0184>>> for <<<MATH_TOKEN_0185>>>
+iterations. Finally, we use 1920 × 1920 patches for 10000
+iterations. During testing, we use TLC [21] to further boost
+the performance of our patch-based method. The base size
+of TLC is set to (1920, 2980).
+
+![Figure 12. Architecture Diagram of ImageLab Team’s Demosaic-
+ing Model](figures/figure_12.png)
+
+hancement architecture, leveraging the power of Coordinate
+Convolution (CoordConv) [46] layers and Self-Calibrated
+Convolution with pixel attention (SCPA) blocks [61, 85], as
+shown in Fig. 12. The architecture is designed to suppress
+noise while effectively preserving important image details.
+
+The input image is first passed through a CoordConv
+layer to add channels containing hard-coded coordinates,
+enriching the representation with spatial information. This
+augmented representation is then downsampled and fed into
+five consecutive SCPA layers with a Pixel Attention Block.
+SCPA layers enhance the model’s capture of intricate spa-
+tial patterns and features. The output from the SCPA lay-
+ers is upsampled and added back to the input image. This
+combined representation is passed through a Modified U-
+Net architecture with Residual Dense Channel Attention
+(RDCA) blocks [60]. The U-Net consists of three encoder
+blocks and two decoder blocks. Each encoder block con-
+tains two RDCA blocks followed by downsampling, while
+each decoder block contains two RDCA blocks followed by
+upsampling. This design facilitates the extraction and re-
+finement of features at multiple scales. Simultaneously, the
+input image is fed into a sophisticated denoising block [22]
+to produce a three-channel denoised image. The denois-
+ing block comprises four inverse convolutional layers fol-
+lowed by an attention mechanism. This mechanism effec-
+tively suppresses noise while preserving important image
+details, enhancing the overall quality of the denoised image.
+The outputs of the RDCA-UNet and the denoising block are
+added to the input image, resulting in a final enhanced im-
+age combining the denoising block’s denoised features with
+the refined features from the RDCA-UNet.
+
+Implementation: The proposed network was trained using
+the NVIDIA Tesla P100 with 16GB RAM and the Tensor-
+Flow Keras platform. 400x400x3 patches were randomly
+extracted from the images. The training dataset consisted
+of 4281 patches, and 755 patches were used for valida-
+tion. Augmentation techniques were applied during train-
+ing. The model was optimized using the Adam optimizer
+with a learning rate schedule that decreased from 0.001 to
+0.00001 over 250 epochs. The model comprises 0.437556
+million parameters. The training objective included a com-
+
+![Figure 12. Architecture Diagram of ImageLab Team’s Demosaic-
+ing Model](figures/figure_12.png)
+
+Figure 12. Architecture Diagram of ImageLab Team’s Demosaic-
+ing Model
+
+Description: We propose a novel image denoising and en-
+
+bination of <<<MATH_TOKEN_0186>>> and <<<MATH_TOKEN_0187>>> loss, <<<MATH_TOKEN_0188>>> ,
+<<<MATH_TOKEN_0189>>>
+
+Description: The author claimed that the solution is based
+on the published OGF, while not providing the specific cita-
+tion. The authors changed the loss function and fine-tuned
+the model so that it could perform better in the competition.
+Implementation: The authors implement the OGF by Py-
+Torch. The model is trained with the Adam optimizers (β1
+<<<MATH_TOKEN_0190>>> and <<<MATH_TOKEN_0191>>> for <<<MATH_TOKEN_0192>>> iterations. The learn-
+ing rate is initially set to 2e-4 and then steadily decreased
+
+Training using generated instructions
+Inference using user instructions
+"Improve the illumination."
+"can you make this photo brighter?"
+Correct the
+GPT-4
+illumination and
+Randomly sample according to the degradation
+HDR in the photo
+E
+* Offline Instructions Generation
+(Intent) Degradation Classification
+Ins
+
+![Figure 13. InstructIR [23] takes as input an image and a human-written instruction for how to improve that image. The multi-task model
+performs text-guided low-light image enhancement.](figures/figure_13.png)
+
+Figure 13. InstructIR [23] takes as input an image and a human-written instruction for how to improve that image. The multi-task model
+performs text-guided low-light image enhancement.
+
+to <<<MATH_TOKEN_0193>>> by the cosine annealing scheme during the training
+process. <<<MATH_TOKEN_0194>>> Patches at the size of <<<MATH_TOKEN_0195>>> are randomly
+cropped from the low-/normallight image pairs as training
+samples. The batch size is 8. The training objective is to
+minimize the mean absolute error (MAE) between the lit-up
+image and the enhanced image. The training and validation
+sets are split in proportion to 209:21.
+
+![Figure 13. InstructIR [23] takes as input an image and a human-written instruction for how to improve that image. The multi-task model
+performs text-guided low-light image enhancement.](figures/figure_13.png)
+
+Description: We use InstructIR [23] for real-world low-
+light enhancement. InstructIR [23] takes as input an image
+and a human-written instruction for how to improve that im-
+age. The neural model performs all-in-one image restora-
+tion. InstructIR [23] achieves state-of-the-art results on sev-
+eral restoration tasks including image denoising, deraining,
+deblurring, dehazing, and (low-light) image enhancement.
+The approach is illustrated in Fig. 13.
+
+The model achieves <<<MATH_TOKEN_0196>>> dB, 0.8075 SSIM and <<<MATH_TOKEN_0197>>>
+LPIPS in the NTIRE 2024 Low-light Enhancement Chal-
+lenge, representing a baseline solution for multi-task
+restoration using text-guidance.
+
+Implementation: The model can process full-resolution
+images in a regular GPU without tiling strategies. We
+fine-tune the model using the challenge dataset besides
+LOL [71]. We use the instructions “correct the low illu-
+mination in this image” for all the test images.
+
+Efficient Baseline Methods: The team also studies efficient
+methods that can process full-resolution images in real-
+time at several FPS: RetinexNet [71], SCI [55] and Zero-
+DCE <<<MATH_TOKEN_0198>>> All these methods can process <<<MATH_TOKEN_0199>>> di-
+rectly on regular GPUs such as Nvidia 3090Ti. However,
+these methods did not improve over InstructIR [23].
+
+Datasets: To enhance our results and generalize better, we
+included other training datasets: LOL-v2 (real and syn-
+thetic) and the MIT5K dataset. We also apply random crop,
+flip and rotation augmentations.
+
+![Figure 14. Overall framework the Team OptDev’s DFormer](figures/figure_14.png)
+
+Description: The authors developed a novel transformer-
+based deep network DoubleFormer (DFormer) to learn low-
+light to highlight mapping, as shown in Fig. 14. The ar-
+chitecture comprises two separate encoder-decoder blocks
+(EDB) and a multi-head correlation block (MHCB) to pro-
+duce plausible images. The authors leverage illumination
+mapping from the well-known Retinex theory to accelerate
+our reconstruction performance. Also, the authors incor-
+porated the state-of-the-art low-light enhancement method,
+Retinexformer in the overall architecture’s first half. Re-
+grettably, Retinexformer failed to generate plausible im-
+ages in many tricky scenes while illustrating visible noise
+and color desaturation in complex regions. To address this
+limitation, the authors proposed to utilize an MHCB, fol-
+lowed by another EDB in our architecture. We leverage the
+correlated features with intermediate output in the second
+EDB to perceive better denoising results. In addition to that,
+the authors utilized a perceptual loss, including luminance-
+chrominance guidance, to address the color inconsistency.
+Implementation: The proposed solution is implemented
+with the PyTorch framework. The networks were optimized
+with a Adam optimizer, where the hyperparameters were
+tuned as <<<MATH_TOKEN_0200>>> and learning rate <<<MATH_TOKEN_0201>>> 5e-4. We
+trained our model with non-overlapping image patches with
+a constant batch size of 12, which takes around 36 hours to
+complete. We conducted our experiments on an NVIDIA
+
+A6000 graphical processing unit (GPU) machine.
+
+![Figure 15. Overall framework our Team ataza’s Frequency Guided Network](figures/figure_15.png)
+
+Description: Team ataza proposes a low parameter effi-
+cient network, as shown in Fig. 15. Based on the ob-
+servation that error in low light images mainly exist in
+the low-frequency region they decompose the image into
+high-frequency and low-frequency subbands using Discrete
+Wavelet Transform (DWT) whose utility for image process-
+ing has been well established [62]. Specifically, they choose
+HAAR wavelet [56] due to it’s computational efficiency and
+excellent ability to detect edges [58]. The model consists of
+two branches one for high-frequency and the other for low-
+frequency features. This approach allows the model to focus
+on recovering low-frequency information while preserving
+high-frequency information that otherwise would have been
+lost in the deeper layers.

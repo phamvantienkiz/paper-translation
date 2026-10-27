@@ -1,0 +1,267 @@
+<<<MATH_TOKEN_0261>>>
+
+Their diffusion model is built on the mean-reverting
+SDE [53, 54]. By optimizing the entropy-based distribu-
+tion distance between predictions and ground truth states,
+their results have better visual qualities than that only using
+<<<MATH_TOKEN_0262>>> loss. Fig. 17 illustrates the overview of the proposed
+diffusion training process.
+
+Implementation: This team use the provided low-light
+dataset but further split 10 image pairs for validation. The
+Refusion framework is used as the baseline and the team di-
+rectly changed its loss funcion to the proposed differentiable
+spatial entropy. In training, all images are cropped with
+patch size <<<MATH_TOKEN_0263>>> 128, and the total training iteration is set
+to 500,000 with a batch 16. Following Refusion [54], this
+work use the AdamW [51] optimizer and the ‘CosineDe-
+cay’ scheduler with an initial learning rate 0.0001. And the
+diffusion steps are fixed to 100 in both training and testing.
+
+Self-Calibrated Module G
+
+Self-Calibrated Illumination Learning
+
+• Ilumination Estimation Fi
+
+Testing Phase
+
+Description: In accordance with the Retinex theory, there
+exists a relationship between the observed low-light image,
+denoted as y, and the desired clear image z, expressed as
+
+![Figure 18.
+Framework of Self-Calibrated Illumination Module
+(Reproduced from [55]). We employ variant of this method for
+enhancement of low-light images with custom loss function.](figures/figure_18.png)
+
+Figure 18. Framework of Self-Calibrated Illumination Module
+(Reproduced from [55]). We employ variant of this method for
+enhancement of low-light images with custom loss function.
+
+<<<MATH_TOKEN_0264>>> where <<<MATH_TOKEN_0265>>> signifies the illumination component.
+Typically, optimization efforts in low-light image enhance-
+ment primarily focus on refining the illumination compo-
+nent. To achieve enhanced output, one common approach
+involves removing the estimated illumination in accordance
+with the Retinex theory. Drawing inspiration from prior
+works on illumination optimization, particularly those em-
+ploying a stage-wise approach, we propose a progressive
+perspective for modeling this task. Here, we introduce a
+mapping <<<MATH_TOKEN_0266>>> parameterized by <<<MATH_TOKEN_0267>>> to learn the illumination
+component, where each stage <<<MATH_TOKEN_0268>>> (with <<<MATH_TOKEN_0269>>> con-
+sists of a basic unit represented as <<<MATH_TOKEN_0270>>> and <<<MATH_TOKEN_0271>>>
+<<<MATH_TOKEN_0272>>> with <<<MATH_TOKEN_0273>>> It’s worth noting that we adopt a
+weight sharing mechanism across stages, utilizing the same
+architecture <<<MATH_TOKEN_0274>>> and weights <<<MATH_TOKEN_0275>>> for each stage. Specifically,
+the parameterized operator <<<MATH_TOKEN_0276>>> effectively learns a simple
+residual representation <<<MATH_TOKEN_0277>>> between the illumination and the
+observed low-light image. This process is motivated by the
+consensus that illumination and low-light observations ex-
+hibit similarities or linear connections in most areas.
+
+We establish a module to ensure the convergence of re-
+sults from each stage to a consistent state. Given that the
+input of each stage originates from the previous stage, and
+the initial input of the first stage is predetermined as the
+low-light observation, we propose to indirectly explore con-
+vergence behavior by bridging the input of each stage (ex-
+cluding the first) with the low-light observation. To achieve
+this, we employ a self-calibrated module [55] denoted as
+s, which is added to the low-light observation to represent
+the disparity between the input of each stage and the initial
+stage. Specifically, the self-calibrated module, represented
+as <<<MATH_TOKEN_0278>>> utilizes the parameterized operator <<<MATH_TOKEN_0279>>> with
+learnable parameters <<<MATH_TOKEN_0280>>> to generate <<<MATH_TOKEN_0281>>>v_{t}
+denotes the converted input for each stage <<<MATH_TOKEN_0282>>> Con-
+sequently, the conversion for the basic unit in the <<<MATH_TOKEN_0283>>> stage
+<<<MATH_TOKEN_0284>>> can be expressed as <<<MATH_TOKEN_0285>>> This
+self-calibrated module effectively corrects the input of each
+stage by integrating physical principles, thereby indirectly
+influencing the output of each stage. In addition to this, we
+employ NIQE (Natural Image Quality Evaluator) [59] as a
+loss function. NIQE offers a valuable approach for improv-
+
+ing perceptual quality. By utilizing NIQE as a metric to
+quantify the naturalness and perceptual fidelity of enhanced
+images, the training process aims to minimize the NIQE
+scores of the generated images. This strategy encourages
+the model to produce output images that closely resemble
+natural, high-quality images, enhancing their visual appeal
+and usability. By optimizing for lower NIQE scores, the
+model learns to prioritize perceptually pleasing enhance-
+ments, ultimately leading to outputs that are not only vi-
+sually appealing but also retain important natural character-
+istics. Integrating NIQE as a loss function thus contributes
+to the development of low-light image enhancement tech-
+niques that align closely with human perception and prefer-
+ences. NIQE as a loss function is given as:
+
+where <<<MATH_TOKEN_0286>>> is the number of samples, <<<MATH_TOKEN_0287>>> represents the input
+to the <<<MATH_TOKEN_0288>>> stage for the <<<MATH_TOKEN_0289>>> sample, <<<MATH_TOKEN_0290>>> denotes the
+output of the <<<MATH_TOKEN_0291>>> stage for the <<<MATH_TOKEN_0292>>> sample after applying
+the self-calibrated module, and NIQE is the function that
+calculates the NIQE score for an image. Minimizing this
+loss function during training would encourage the model to
+produce output images with lower NIQE scores, indicating
+higher perceptual quality and naturalness. This would result
+in output images that are closer in quality to natural, high-
+quality images.
+
+Implementation: We train the proposed method using
+Python (v3.8) coupled with PyTorch framework and con-
+duct experiments on 2x NVIDIA RTX 3090 GPUs with
+AMD Ryzen ThreadRipper 3960X CPU. We use 16 resid-
+ual blocks split into three layers of the hierarchy, and gener-
+ate 256 feature maps for each scale. We train the proposed
+method on dataset provided in the challenge along with LoL
+Dataset [71] with images of size 2992*2000. During train-
+ing, we use Adam optimizer with <<<MATH_TOKEN_0293>>>
+<<<MATH_TOKEN_0294>>> and set the learning rate <<<MATH_TOKEN_0295>>> We train
+the proposed method for 1000 epochs. During testing, we
+use full resolution images (2992 * 2000), on single RTX
+3090 GPU. Average testing time for single image on full
+resolution is 0.53s on RTX 3090 GPU.
+
+![Figure 19. The network architecture of team BFU-LL.](figures/figure_19.png)
+
+Description: Diverging from the use of more complex,
+Transformer-based models for image restoration [30, 32],
+this team focuses on addressing low-light issues through the
+application of diffusion methods. They introduce a novel
+approach for enhancing low-light images proposed by [40],
+as illustrated in Fig. 19. The method first converting these
+images into the wavelet domain via 2D discrete wavelet
+transformation (DWT), iterated multiple times. This pro-
+cess yields an average coefficient and sets of high-frequency
+
+![Figure 19. The network architecture of team BFU-LL.](figures/figure_19.png)
+
+Figure 19. The network architecture of team BFU-LL.
+
+coefficients. By employing Haar wavelets [29], the method
+divides the input into four sub-bands, effectively capturing
+global information and sparse local details. This signifi-
+cantly reduces spatial dimensions while preserving essen-
+tial image information. The team’s wavelet-based diffusion
+model utilizes a forward diffusion process during the train-
+ing phase and a denoising process across both training and
+inference phases. Moreover, they have developed a High-
+Frequency Restoration Module (HFRM) for the reconstruc-
+tion of high-frequency details. Utilizing the U-Net archi-
+tecture as the noise estimator network and implementing a
+fixed variance schedule, their method methodically trans-
+forms the input into corrupted noise data, subsequently em-
+ploying Gaussian denoising transitions to achieve a clear
+and enhanced output.
+
+Building on the methodologies described in previous
+studies [28, 76], this team design and adopt a hybrid loss
+function as follows:
+
+<<<MATH_TOKEN_0296>>>
+
+where <<<MATH_TOKEN_0297>>> and <<<MATH_TOKEN_0298>>> are the hyperpa-
+rameters weighting each loss component.
+Implementation: The implementation by this team is con-
+ducted using PyTorch. The proposed network effectively
+converges after undergoing training for <<<MATH_TOKEN_0299>>> iterations on
+a system equipped with four NVIDIA RTX 1080Ti GPUs.
+For optimization, the Adam optimizer is employed. Consid-
+ering the impact of the learning rate on experimental results
+<<<MATH_TOKEN_0300>>> the initial learning rate is set to <<<MATH_TOKEN_0301>>> This learn-
+ing rate decays by a factor of <<<MATH_TOKEN_0302>>> after every <<<MATH_TOKEN_0303>>> itera-
+tions. The team utilizes a batch size of 12 and a patch size
+of <<<MATH_TOKEN_0304>>> 256. The scale <<<MATH_TOKEN_0305>>> for the wavelet transformation
+is set to 2.
+
+Description: In order to design low light image enhance-
+ment,we use multiple Retinex blocks and multiple chan-
+nel attention in the proposed solution. The Fig. 20(a) de-
+
+(a) The block schematic of the proposed architecture for Low Light En-
+hancement
+Decomposition
+Enhancement
+Fusion
+Basic-block
+2: 3x3 conv
+ASF
+ conv.
+conv
+lxi d: 1
+I d
+
+Ilumination
+Reflectance
+No
+Conv + ReLU
+Conv +ReLU
+Conv + ReLU
+ReLU
+Conv
+Con
+Conv = SMU
+Conv + SMU
+
+Log-L
+
+(b) The design of the ARblock used in the proposed model.
+
+![Figure 20. The architecture of the proposed model for Low Light
+Enhancement.](figures/figure_20.png)
+
+Figure 20. The architecture of the proposed model for Low Light
+Enhancement.
+
+picts the proposed architecture for Low Light enhancement.
+The initial step involves feeding the low-light image into
+a denoiser module tailored to address the noise typical of
+low-exposure conditions. Subsequently, a shallow feature
+extraction process, achieved through a single convolutional
+operation, projects the denoised image into a feature space.
+
+Following this, the image undergoes enhancement
+through multi-branch Adaptive Retinex (AR) Blocks oper-
+ating at various scales. These blocks simultaneously en-
+hance both broad and fine details within the image.
+
+The shallow features and the enhanced results are then
+merged within a multiple channel attention module, which
+effectively extracts global and local features and combines
+them using a sigmoid function.
+
+Lastly, the fused features are refined through another
+convolutional layer, culminating in the production of a
+clearer, brighter rendition of the original low-light im-
+age. Despite the addition of the channel attention mod-
+ule, which marginally increases parameter count, the over-
+all network remains lightweight, owing to the efficiency
+achieved through the AR Blocks and denoiser modules.
+
+![Figure 21. General method ﬂow chart.](figures/figure_21.png)
+
+Figure 21. General method flow chart.
+
+The network incorporates multiple Adaptive Retinex
+Blocks (ARBlocks), which represent a novel extension of
+the Single Scale Retinex method in feature space [9]. At
+the core of each ARBlock lies an efficient illumination esti-
+mation function known as the Adaptive Surround Function
+(ASF) [82]. This function, akin to a general form of sur-
+round functions, is implemented using convolutional lay-
+ers. The ARBlock serves a dual purpose, facilitating both il-
+lumination adjustment and reflectance enhancement within
+the image. Fig. 20 illustrates the architecture of the AR-
+Block, demonstrating its capability to enhance both low-
+frequency and high-frequency components of the image, re-
+
+spectively.
+
+Implementation: The code is implemented using Pytorch
+library. The proposed network is trained using weighted
+combination of <<<MATH_TOKEN_0306>>> loss, and charbornnier loss with
+a learning rate of <<<MATH_TOKEN_0307>>> which is decayed by <<<MATH_TOKEN_0308>>>
+iterations and the same is optimized using Adam optimizer.
+The model is trained up to <<<MATH_TOKEN_0309>>> iterations with a batch
+size of 4.

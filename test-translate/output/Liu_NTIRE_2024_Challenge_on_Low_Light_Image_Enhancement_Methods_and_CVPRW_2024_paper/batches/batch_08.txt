@@ -1,0 +1,468 @@
+Description: We propose ZSRADNet: Zero-Shot Retinex
+Joint Adaptive-Illumination and Denoising for Underex-
+posed Image Enhancement, which mainly considers un-
+derexposed images often suffer severe quality degradation.
+Many scenes exhibit issues related to occlusion and shad-
+ows, resulting in non-uniform illumination in the images.
+Most methods for restoring underexposed images rely on
+global enhancement, which can lead to excessive enhance-
+ment in areas that were originally well-lit. Both supervised
+and unsupervised learning approaches have limitations: ei-
+ther poor generalization or susceptibility to unstable train-
+ing. To address these challenges, the proposed a Zero-Shot
+method that learns enhancement solely from test images. It
+consists of two main components: The Decomposition Net-
+work and The Denoising Network.
+
+As shown in Fig. 21, inspired by [84], the Decomposi-
+tion network employs a dual-branch structure to break down
+the input image into three components: Illumination, Re-
+flection, and Noise. Initially, the input image passes through
+a simple four-layer CNN (Convolutional Neural Network)
+combined with ReLU (Rectified Linear Unit) activation and
+a Sigmoid function to obtain the illumination. Next, a de-
+signed DenseBlock layer, combined with ReLU and Con-
+volution, generates the reflection (using Sigmoid activa-
+tion) and the noise (using Tanh activation). DenseBlock can
+make better use of the feature information of the previous
+layer and help to improve feature reusability.
+
+To achieve Zero-Shot enhancement, the proposed com-
+bines loss functions of Retinex reconstruction, Reflectance
+
+smoothness, and Illumination-guided noise estimation. By
+iteratively minimizing this combined loss function, the pro-
+posed effectively estimates the noise and restores the illu-
+mination. Additionally, the proposed introduces an adaptive
+gamma correction method that uses illumination as a mea-
+sure of non-uniformly lit regions in the image. It bright-
+ens underexposed areas while leaving well-lit regions un-
+touched. Our loss function consists of three parts:
+
+<<<MATH_TOKEN_0310>>>
+where <<<MATH_TOKEN_0311>>> and <<<MATH_TOKEN_0312>>> represent reconstruction
+loss, reflectance smoothness loss, and Illumination-guided
+noise loss respectively, and <<<MATH_TOKEN_0313>>> represents corre-
+sponding weight factors.
+
+The Denoising network generates a pair of noise maps
+[57] from a single noise image and utilizes these maps to
+train a simple three-layer network (CNN combined with
+SMU activation [6]). Specifically, the proposed begins by
+applying a down-sampling operator to decompose the out-
+put from the Decomposition network into a pair of down-
+sampled images. One of these observations serves as the
+input value, while the other acts as the target. The proposed
+then employs regularization techniques during training to
+achieve effective denoising.
+
+As a method specific to a single input image, it does not
+require any prior image samples or prior training models.
+The final enhanced results have advantages in the brightness
+and naturalness of non-uniform illumination images.
+Implementation: The team uses Pytorch and the test device
+is the A6000 GPU. The illumination branch of the Decom-
+position network comprises a four-layer structure consisting
+of <<<MATH_TOKEN_0314>>> Convolution followed by ReLU activation func-
+tions. On the other hand, the reflection and noise branches
+utilize a four-layer architecture of <<<MATH_TOKEN_0315>>> Convolution with
+Denseblock, followed by ReLU activation functions, cul-
+minating in an additional layer of <<<MATH_TOKEN_0316>>> Convolution. The
+network undergoes a total of 1000 iterations during training.
+In the Denoising network, two layers of <<<MATH_TOKEN_0317>>> Convolution
+are employed, each followed by SMU activation, and ulti-
+mately connected to a final layer of <<<MATH_TOKEN_0318>>> Convolution. The
+training process utilizes Mean Squared Error (MSE) loss is
+used for 2000 iterations. All the learning rates were 0.01;
+the optimizer uses Adam; without training, the input of a
+single image directly outputs the enhanced result.
+
+Description: As shown in Fig. 22, we employed the
+Retinexformer [8] model, a one-stage Retinex-based trans-
+former, specifically designed for low-light image enhance-
+ment tasks. Our approach is distinguished by training the
+Retinexformer model directly on the dataset provided by the
+competition, demonstrating its adaptability and generaliza-
+tion capability across different datasets. This direct training
+
+![Figure 22. Illustrative diagram showing the application of Retinex-
+former for low-light enhancement.](figures/figure_22.png)
+
+Figure 22. Illustrative diagram showing the application of Retinex-
+former for low-light enhancement.
+
+method underscores the model’s effectiveness and flexibil-
+ity for specific low-light conditions. Our method maintains
+a moderate level of complexity throughout all stages, ensur-
+ing efficiency and effectiveness from data preprocessing to
+model training and final evaluation.
+
+Implementation: Our training configuration details various
+aspects of the model training process. We conducted a total
+of 300,000 iterations without a warm-up phase, and gradi-
+ent clipping was employed to prevent gradient explosion.
+During training, we divided the 300,000 iterations into two
+cycles:
+
+• The first cycle involved a fixed learning rate of 3e-4 for
+the initial 92,000 iterations.
+• The second cycle applied a cosine annealing strategy, de-
+creasing the learning rate from <<<MATH_TOKEN_0319>>> to <<<MATH_TOKEN_0320>>> over the sub-
+sequent 208,000 iterations.
+
+We also utilized mixed data augmentation techniques ,
+and for the optimizer configuration, we chose the Adam op-
+timizer with an initial learning rate of 2e-4 and betas set to
+[0.9, 0.999]. Regarding the loss function, we employed the
+<<<MATH_TOKEN_0321>>> Loss, with a loss weight of <<<MATH_TOKEN_0322>>> and reduction method set
+to mean.
+
+This work was partially supported by the Humboldt Foun-
+dation. We thank the NTIRE 2024 sponsors: Meta Re-
+ality Labs, OPPO, KuaiShou, Huawei and University of
+Wurzburg (Computer Vision Lab). ¨
+
+Title: NTIRE 2024 Low Light Enhancement Challenge
+Members:
+
+Xiaoning <<<MATH_TOKEN_0323>>> (liuxiaoning2016\omegasina.com),
+Zongwei Wu^{2}<<<MATH_TOKEN_0324>>>
+
+Ao Li1 (aoli@std.uestc.edu.cn),
+Florin Vasluianu2 (florin-alexandru.vasluianu@uni-
+
+Yulun Zhang^{3} (yulun100 <<<MATH_TOKEN_0325>>> gmail.com),
+Shuhang Gu1 (shuhanggu@gmail.com),
+Le <<<MATH_TOKEN_0326>>> (lezhang <<<MATH_TOKEN_0327>>> uestc.edu.cn),
+Ce Zhu1 (eczhu@uestc.edu.cn),
+Radu Timofte^{2,4}<<<MATH_TOKEN_0328>>>\mathfrak{C}<<<MATH_TOKEN_0329>>>
+Affiliations:
+1 University of Electronic Science and Technology of
+China, China
+2 Computer Vision Lab, University of Wurzburg, Germany ¨
+<<<MATH_TOKEN_0330>>> Shanghai Jiao Tong University, China
+4 Computer Vision Lab, ETH Zurich, Switzerland
+
+Title: Scale-Robust Low-light Ultra-High-Definition Image
+
+Enhancement
+
+Members:
+
+Zhi Jin1,2 (jinzh26@mail.sysu.edu.cn), Hongjun Wu1,
+
+Chenxi Wang1, Haitao Ling1
+
+Affiliations:
+
+1 School of Intelligent Systems Engineering, Shenzhen
+Campus of Sun Yat-sen University, Shenzhen, Guangdong
+518107, China
+2 Guangdong Provincial Key Laboratory of Fire Science
+and Technology, Guangzhou 510006, China
+
+former for Low-light Image Enhancement
+
+Title: Retinexformer: One-stage Retinex-based Trans-
+Yuanhao <<<MATH_TOKEN_0331>>> (caiyuanhao1998.\Thetagmail.com), Hao <<<MATH_TOKEN_0332>>>
+
+Members:
+
+Yuxin Zheng2, Jing Lin2, Alan Yuille1
+
+Affiliations:
+
+1 Johns Hopkins University
+
+Title:
+Multi-scale feature fusion Low-light Image En-
+hancement
+
+Ben Shao1 (2830802483@qq.com), Jin Guo1, Tianli Liu1,
+
+Members:
+
+Mohao Wu1
+
+Affiliations:
+
+1 Zhejiang Dahua Technology Co.,Ltd.
+
+Title:
+
+DiffLight: Integrating Content and Detail for
+
+Low-light Image Enhancement
+
+Members:
+
+Yixu Feng1 (yixu-nwpu@mail.nwpu.edu.cn), Shuo Hou1,
+Haotian Lin2, Yu Zhu1, Peng Wu1, Wei Dong3, Jinqiu
+Sun1, Yanning Zhang1, Qingsen Yan1
+
+Affiliations:
+
+1 School of Computer Science, Northwestern Polytechnical
+
+University, China
+
+2 School of Software, Northwestern Polytechnical Univer-
+sity, China 3 School of Computer Science, Xi’an University
+of Architecture and Technology, China
+
+Title: UHDMamba: Towards Effective and Efficient State-
+Space Model for UHD Low-light Image Enhancement
+Members:
+
+Wenbin Zou1 (alexzou14@foxmail.com), Weipeng Yang1,
+Yunxiang Li2, Qiaomu Wei3, Tian Ye4, Sixiang Chen3,4
+
+Affiliations:
+
+<<<MATH_TOKEN_0333>>> South China University of Technology, China
+2 Fuzhou University, China
+3 Chengdu University of Information Technology, China
+4 Hong Kong University of Science and Technology
+(Guangzhou), China
+
+Title: Exploring the Application of NAFNet in Low Light
+Enhancement
+
+Zhao <<<MATH_TOKEN_0334>>> (cszhangegmail.com), <<<MATH_TOKEN_0335>>>
+
+Wang1, Yan Luo1, Zhichao Zuo1, Mingshen Wang1, Junhu
+
+Wang1, Yanyan Wei1
+
+Affiliations:
+
+1 Hefei University of Technology, China
+
+Title: Low Enhancement Model Ensemble of Multi-patch
+RetinexFormers
+
+Affiliations:
+Xiaopeng Sun1 (xpsun@stu.xidian.edu.cn), Yu Gao1 ,
+Jiancheng Huang1
+1 Individual Researcher
+
+Title: MLP for Low-Light Image Enhancement
+members:
+Hongming Chen1 (chenhongming@stu.sau.edu.cn), Xiang
+
+Chen2
+
+Affiliations:
+
+1 Shenyang Aerospace University, China
+
+2 Nanjing University of Science and Technology, China
+
+Title: Enhanced Low-Light Imaging Method Based on
+
+Axis-Transformer
+
+Members:
+
+Hui Tang1 (2639442956@qq.com), Yuanbin Chen1,
+
+Yuanbo Zhou1, Xinwei Dai1, Xintao Qiu1, Wei Deng2,
+
+Qinquan <<<MATH_TOKEN_0336>>> Tong Tong^{1,2}
+
+Affiliations:
+
+<<<MATH_TOKEN_0337>>> Fuzhou University, Fuzhou, China
+
+<<<MATH_TOKEN_0338>>> Imperial Vision Technology, Fuzhou, China
+
+Title: Supervised Deep Curve Estimation with Denoiser
+
+Members:
+
+Mingjia Li1 (mingjiali@tju.edu.cn), Jin Hu1, Xinyu He1,
+
+Xiaojie Guo1
+
+Affiliations:
+
+1 Tianjin University, China
+
+Title: Enhancing Low-Light Images: A SCPA-Based
+
+Approach with RDCA-UNet Architecture
+
+Members:
+
+Sabarinathan^{1}\,<<<MATH_TOKEN_0339>>>{\mathfrak{Gmail.com),~K~}}<<<MATH_TOKEN_0340>>>
+
+Sasithradevi3, B Sathya Bama4, S. Mohamed Mansoor
+
+Roomi4, V.Srivatsav5
+
+Affiliations:
+
+1 Couger Inc,Japan
+
+2 Sasi Institute of Technology & Engineering, India
+3 Vellore Institute of Technology, India
+4 Thiagarajar college of engineering, India
+5 Coventry University, United Kingdom
+
+Title: One-stage gatebased Framework
+
+Members:
+
+Qiuying Chen1, Jiahong Shao1, Yizhi Zhang1
+
+Jinjuan Wang (15600951607@163.com) 1, Long Sun1,
+Affiliations:
+
+<<<MATH_TOKEN_0341>>> Independent Researchers
+
+Title:
+
+Following Human Instructions
+
+InstructIR: High-Quality Image Restoration
+https://github.com/mv-lab/InstructIR
+Members:
+
+Marcos V. Conde1,2 (marcos.conde@uni-wuerzburg.de),
+Daniel Feijoo1, Juan C. Benito1, Alvaro Garc´ıa1
+
+Affiliations:
+
+1 Cidaut AI
+2 CVLab, University of Wuerzburg
+
+Title: Learning Optimized Low-Light Image Enhancement
+
+for Edge Vision Tasks
+
+Jaeho Lee1 (jaeho.lee@opt-ai.kr), Seongwan Kim1, Sharif
+
+SMA1, Nodirkhuja Khujaev1, Roman Tsoy1
+
+Affiliations:
+
+1 Opt-AI
+
+ataza
+
+Title: An Efficient Frequency Guided Image Enhancement
+Network for Low Light Image Enhancement and Shadow
+
+Removal
+
+Ali Murtaza1,2 (ali.murtaza.ali29@outlook.com),
+
+Uswah Khairuddin^{1,2},<<<MATH_TOKEN_0342>>>
+
+Affiliations:
+
+1 Malaysia-Japan International Institute of Technology
+(MJIIT), University Teknologi Malaysia, Kuala Lumpur, ,
+Malaysia
+2 Center for Artificial Intelligence and Robotics (CAIRO),
+Universiti Teknologi Malaysia, Kuala Lumpur, Malaysia
+
+Title: Hierarchical LightNet: Towards Low-Light Image
+
+Members:
+
+Sampada
+
+Malagi1,3 (sampadamalagi12@gmail.com),
+
+Amogh Joshi1, Nikhil Akalwadi1,3, Chaitra Desai1,3,
+
+Ramesh Ashok Tabib1,2, Uma Mudenagudi1,2
+
+Affiliations:
+
+1 Center of Excellence in Visual Intelligence (CEVI), KLE
+Technological University, Hubballi, Karnataka, India
+2 School of Electronics and Communication Engineering,
+KLE Technological University, Hubballi, Karnataka, India
+3 School of Computer Science and Engineering, KLE
+Technological University, Hubballi, Karnataka, India
+
+Title: Equipping Diffusion Models with Differentiable
+
+Spatial Entropy for Low-Light Image Enhancement
+
+Members:
+
+Wenyi <<<MATH_TOKEN_0343>>> (shermanlian<<<MATH_TOKEN_0344>>> 163.com), Wenjing <<<MATH_TOKEN_0345>>>
+
+Affiliations:
+
+<<<MATH_TOKEN_0346>>> Northeastern University
+
+Title: KnightNet: Illumination Guided Low Light Image
+Enhancement Network Members:
+
+Jagadeesh <<<MATH_TOKEN_0347>>> (01fe21bcs004\mathbb{C}<<<MATH_TOKEN_0348>>>
+Nitish Upasi^{1}, Dikshit Hegde^{1}, Ujwala Patil^{1,2}, Sujata <<<MATH_TOKEN_0349>>>
+
+Vijayalaxmi Ashok Aralikatti1,3, Palani Yashaswini1,2,
+Affiliations:
+
+1 Center of Excellence in Visual Intelligence (CEVI), KLE
+Technological University, Hubballi, Karnataka, India
+2 School of Electronics and Communication Engineering,
+KLE Technological University, Hubballi, Karnataka, India
+3 School of Computer Science and Engineering, KLE
+Technological University, Hubballi, Karnataka, India
+
+Title: A Diffusion Model for Low-Light Enhancement
+
+Members:
+
+Xingzhuo Yan1 (ayx1sgh@bosch.com), Wei Hao2, Ming-
+
+han Fu3
+
+Affiliations:
+
+<<<MATH_TOKEN_0350>>> Bosch Investment Ltd.
+2 Fortinet, Inc.
+
+<<<MATH_TOKEN_0351>>> University of Saskatchewan
+
+Title: Retinex based Low Light Image Enhancement
+Members:
+Pooja choksy1 (ds22ec003@eced.svnit.ac.in), Anjali
+Sarvaiya1, Kishor Upla1, Kiran Raja2
+Affiliations:
+1 Sardar Vallabhbhai National Institute of Technology,
+India
+2 Norwegian University of Science and Technology,
+Norway
+
+Title: ZSRADNet: Zero-Shot Retinex Joint Adaptive-
+
+Illumination and Denoising for Underexposed Image
+Enhancement
+Members:
+Hailong Yan (yhl00825@163.com),
+
+Affiliations:
+
+University of Electronic Science and Technology of China,
+
+China
+
+Title: Application and Adaptation of Retinexformer Mem-
+bers:
+
+Zhang1, Huan Zheng2
+
+Yunkai Zhang1 (1585832651@qq.com), Baiang Li1, Jingyi
+
+Affiliations:
+
+1 Hefei University of Technology, China
+
+<<<MATH_TOKEN_0352>>> University of Macau, China
